@@ -3,9 +3,6 @@
 SarevatApp 7.0 es una reestructuracion segura y modular de la aplicacion de administracion Cisco. La
 version original `D:\Downloads\SarevatApp_V6_4.py` se conserva intacta.
 
-Consulta el [analisis tecnico](ANALISIS_PROYECTO.md) y el [roadmap](ROADMAP.md) para conocer el estado
-actual, los riesgos y las siguientes mejoras propuestas.
-
 ## Alcance
 
 - Cisco IOS/IOS-XE mediante SSH o consola serial.
