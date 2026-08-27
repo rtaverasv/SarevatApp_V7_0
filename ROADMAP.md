@@ -1,84 +1,67 @@
-# Roadmap de SarevatApp
+# Roadmap unificado de SarevatApp 7.0
 
-Este roadmap prioriza confianza operativa antes que expansion de alcance. Las duraciones son orientativas para trabajo incremental y deben ajustarse despues de probar con los modelos Cisco objetivo.
+## Propósito y alcance
 
-## Fase 0 - Base del repositorio (completada en esta revision)
+Este es el roadmap principal de SarevatApp. Integra la comparación entre
+entornos con la evolución del producto y prioriza la confianza operativa antes
+de ampliar alcance. La versión 7.0 administra equipos Cisco IOS/IOS-XE por SSH
+o consola serial y permanece exclusivamente en IPv4. IPv6 y otros fabricantes
+solo se evaluarán como iniciativas independientes, con aprobación, validadores
+y pruebas propias.
 
-- [x] Inicializar Git con la rama `main`.
-- [x] Excluir entornos, caches, resultados de pruebas, runtime y secretos locales.
-- [x] Documentar arquitectura, riesgos y oportunidades de producto.
-- [ ] Crear el primer commit cuando se revise el contenido inicial.
+La referencia funcional es `SarevatApp_V7_0.py` y el paquete `sarevat/` con
+Python 3.11 o posterior. La validación local registrada incluye 118 pruebas,
+cobertura de 1,324 de 1,324 líneas ejecutables y 99% de ramas, junto con Ruff,
+Bandit y `pip check`. Estos resultados son simulados: no certifican equipos
+Cisco reales.
 
-## Fase 1 - Confianza y reproducibilidad (1-2 semanas)
+## Línea base y reglas de trabajo
 
-Objetivo: poder cambiar el motor sin aumentar el riesgo sobre equipos reales.
+- Antes de modificar otra copia del proyecto, comparar estructura,
+  dependencias, hashes, pruebas y capacidades con esta línea base.
+- Clasificar diferencias como: Conservada, Mejorada, Regresión, Ausente o Nueva
+  sin probar; registrar archivo, evidencia y prioridad P0/P1/P2/P3.
+- No declarar compatibilidad real por pruebas unitarias o mocks. Se requiere
+  CML, EVE-NG, GNS3 o hardware Cisco autorizado.
+- Mantener el flujo seguro: `CommandPlan` validado, dry-run, confirmación,
+  respaldo redactado, checkpoint, detección de errores IOS, fail-fast,
+  postchecks y rollback confirmado.
+- Mantener la auditoría JSONL con secretos redactados, validación estricta de
+  entradas, VLSM IPv4 y escaneo autorizado con límites.
 
-- Añadir `pyproject.toml` con Python 3.11+, dependencias de ejecucion y grupos de desarrollo.
-- Crear pruebas unitarias para validadores, VLSM, redaccion y los 23 constructores de planes.
-- Crear pruebas del ejecutor con dobles de Netmiko: dry-run, precheck fallido, apply, postcheck fallido, checkpoint y rollback.
-- Convertir los postchecks en aserciones de estado esperado por servicio.
-- Corregir el README con instalacion relativa, entorno virtual y limitaciones reales.
-- Añadir CI para compilacion, pytest con cobertura, Ruff y Bandit.
+## Roadmap por fases
 
-Salida: pipeline verde, cobertura inicial >= 80% en el motor no interactivo y cero secretos en artefactos de prueba.
+| Fase | Prioridad | Objetivo y resultado esperado |
+|---|---:|---|
+| 0. Congelar línea base | P0 | Comparar árbol, dependencias, hashes, pruebas y capacidades antes de integrar otra copia. |
+| 1. Confianza y regresión automatizada | P0 | Empaquetado reproducible, pruebas de validadores, VLSM, seguridad, escáner, CLI, SSH, serial, 23 planes, rollback y postchecks semánticos; CI con pytest, cobertura, Ruff y Bandit. |
+| 2. Laboratorio y compatibilidad | P0/P1 | Validar flujos críticos en CML/EVE-NG/GNS3 y realizar piloto autorizado; crear matriz por IOS/IOS-XE, modelo, licencia y capacidades antes de generar comandos. |
+| 3. Inventario y flujo reutilizable | P1 | Inventario versionado por esquema, perfiles de conexión, almacén seguro de credenciales, borradores de planes, diff de configuración y reportes/códigos de salida normalizados. |
+| 4. Seguridad, plantillas y cumplimiento | P1/P2 | Plantillas por rol/sitio, NTP, syslog, SSH, SNMPv3, AAA y hardening; auditoría de solo lectura, golden config, drift, evidencia y remediación separada como `CommandPlan`. |
+| 5. Operación por lotes y experiencia | P2 | Grupos, concurrencia limitada, ventanas de mantenimiento, despliegue gradual, pausa por fallo, historial filtrable y terminal mejorada o web local sobre la misma capa de casos de uso. |
+| 6. Entrega y certificación continua | P2 | Respaldos cifrados y con retención, reportes HTML/JSON/CSV, empaquetado, releases versionados, changelog, migraciones, guía de recuperación y matriz de soporte certificada. |
 
-## Fase 2 - Flujo operativo reutilizable (2-3 semanas)
+## Próximo sprint recomendado
 
-Objetivo: reducir entradas repetidas y mostrar exactamente que cambiara.
+1. Ejecutar fases 0 y 1 contra cualquier copia de VS Code antes de añadir
+   capacidades nuevas.
+2. Mantener y extender la suite de regresión de seguridad, VLSM, escáner, CLI,
+   executor y servicios; cubrir cancelaciones, errores IOS y rollback.
+3. Corregir primero cualquier diferencia que sea una regresión P0/P1.
+4. Preparar laboratorio y matriz de compatibilidad antes de ampliar servicios o
+   declarar soporte de plataforma.
+5. Implementar después inventario, credenciales seguras y diff; continuar con
+   cumplimiento, operaciones masivas y experiencia de usuario.
 
-- Extraer casos de uso de `cli.py` para que no dependan de `input()` y `print()`.
-- Crear inventario local versionado por esquema, sin credenciales en texto plano.
-- Añadir perfiles de conexion y uso opcional del almacen seguro del sistema operativo.
-- Implementar diff de configuracion actual contra plan propuesto.
-- Guardar planes como borrador, validarlos y volver a ejecutarlos.
-- Estandarizar reportes de ejecucion y codigos de salida para automatizacion.
+## Validación mínima local
 
-Salida: un operador puede seleccionar un equipo, cargar una plantilla, revisar un diff y ejecutar sin reintroducir todos los datos.
+```powershell
+python -m pytest -q --cov=sarevat --cov-branch --cov-report=term-missing
+python -m ruff check SarevatApp_V7_0.py sarevat tests
+python -m bandit -q -r sarevat SarevatApp_V7_0.py
+python -m pip check
+```
 
-## Fase 3 - Plantillas y cumplimiento (2-4 semanas)
-
-Objetivo: convertir SarevatApp en una herramienta de estandarizacion, no solo de configuracion puntual.
-
-- Plantillas por rol/sitio con variables y esquema validado.
-- Perfiles base para NTP, syslog, SSH, SNMPv3, AAA y endurecimiento.
-- Modo auditoria de solo lectura con reglas de cumplimiento y evidencia.
-- Remediacion generada como `CommandPlan`, siempre separada de la auditoria.
-- Respaldo cifrado externo y politica de retencion de backups/checkpoints.
-- Reporte HTML/JSON por equipo, sitio y regla.
-
-Salida: informe de cumplimiento reproducible y remediacion revisable mediante diff.
-
-## Fase 4 - Operacion por lotes y experiencia de usuario (3-5 semanas)
-
-Objetivo: operar varios equipos con control de impacto.
-
-- Cola de trabajos con concurrencia limitada y ventana de mantenimiento.
-- Estrategias de despliegue: uno primero, lotes pequeños, pausa automatica por fallo.
-- Historial filtrable de ejecuciones, cambios y rollbacks.
-- Interfaz de terminal mejorada o interfaz web local sobre la misma capa de casos de uso.
-- Exportacion/importacion de inventario y resultados.
-- Metricas locales: exito, fallo, duracion, dispositivos omitidos y rollbacks.
-
-Salida: despliegue controlado a un grupo de dispositivos con resumen y trazabilidad completa.
-
-## Fase 5 - Certificacion y expansion (continua)
-
-Objetivo: ampliar solo lo que pueda probarse y mantenerse.
-
-- Matriz de compatibilidad por IOS/IOS-XE, modelo y licencia.
-- Laboratorio automatizado en CML, EVE-NG o GNS3 para flujos criticos.
-- Pruebas de consola serial y fallos de transporte.
-- Evaluar IPv6 y otros fabricantes como iniciativas separadas, basadas en demanda.
-- Publicacion versionada, changelog, migraciones de esquema y guia de recuperacion.
-
-Salida: releases con plataformas certificadas y limites de soporte explicitos.
-
-## Proximo sprint recomendado
-
-1. Empaquetado reproducible y correccion del README.
-2. Pruebas de `validators.py`, `security.py` y `vlsm.py`.
-3. Pruebas de todos los planes de `services.py`.
-4. Pruebas del ciclo checkpoint/apply/postcheck/rollback.
-5. Postchecks con expectativas semanticas para VLAN, trunk, rutas, OSPF y BGP.
-
-No conviene comenzar por una interfaz grafica: sin una capa de casos de uso y pruebas, solo duplicaria el acoplamiento del flujo interactivo actual.
+No conviene empezar por una interfaz gráfica sin conservar la separación entre
+la interfaz y los casos de uso: duplicaría el acoplamiento y aumentaría el
+riesgo operativo.
