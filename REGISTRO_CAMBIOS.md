@@ -15,6 +15,22 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-28 06:37:05 -04:00 — Preparación del piloto Cisco autorizado
+
+- **Cambio:** se añadió una preflight local de un solo comando y una guía para
+  el piloto de las 11:00. La guía define el orden de prueba, los criterios para
+  detenerse, la evidencia que debe registrarse y las protecciones adicionales
+  para AAA y SNMPv3.
+- **Motivo:** llegar a la prueba con un flujo claro de observación, dry-run,
+  recuperación y registro, sin presentar la validación local como certificación
+  de hardware Cisco.
+- **Archivos afectados:** `scripts/preflight_prueba_real.ps1`,
+  `PRUEBA_REAL_11AM.md`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `151 passed`; cobertura total de 1,968 líneas ejecutables y
+  93% de ramas. Ruff, Bandit, `pip check`, validación sintáctica de PowerShell
+  y `git diff --check` finalizaron sin errores. No se realizaron conexiones a
+  equipos Cisco reales.
+
 ### 2026-08-27 21:21:14 -04:00 — Fase 5: organización inicial por grupos
 
 - **Cambio:** se añadieron grupos opcionales a los perfiles de inventario. Un

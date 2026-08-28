@@ -107,6 +107,10 @@ python -m pip install -r requirements-dev.txt
 Si tu entorno virtual usa otro intérprete, indícalo sin cambiar el script:
 `.\scripts\validar_calidad.ps1 -Python .\.venv\Scripts\python.exe`.
 
+Para la prueba con un equipo Cisco autorizado, sigue
+[`PRUEBA_REAL_11AM.md`](PRUEBA_REAL_11AM.md) y ejecuta
+`.\scripts\preflight_prueba_real.ps1` antes de conectar.
+
 ## Flujo seguro de configuracion
 
 1. Descubrir inventario, version y configuracion actual.
