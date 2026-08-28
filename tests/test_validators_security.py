@@ -76,6 +76,10 @@ def test_dangerous_commands_are_detected(command: str) -> None:
     assert dangerous_reasons(command)
 
 
+def test_aaa_new_model_requires_high_impact_confirmation() -> None:
+    assert dangerous_reasons("aaa new-model") == ("cambia el control de acceso AAA",)
+
+
 def test_no_shutdown_is_not_marked_dangerous() -> None:
     assert not dangerous_reasons("no shutdown")
 
@@ -88,3 +92,10 @@ def test_ios_errors_and_secret_redaction() -> None:
     assert "SuperSecret" not in redacted
     assert "PUBLIC" not in redacted
     assert redacted.count("********") == 2
+
+
+def test_snmpv3_credentials_are_redacted() -> None:
+    command = "snmp-server user netops MONITOR v3 auth sha AuthSecret priv aes 128 PrivSecret"
+    redacted = redact_text(command)
+    assert "AuthSecret" not in redacted
+    assert "PrivSecret" not in redacted

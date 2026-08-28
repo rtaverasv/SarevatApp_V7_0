@@ -54,6 +54,13 @@ class CiscoExecutor:
             raise RuntimeError("; ".join(errors))
         return output
 
+    @staticmethod
+    def _verify_postcheck(command: str, output: str, expected_tokens: tuple[str, ...]) -> None:
+        """Confirma evidencia observable sin revelar valores sensibles en errores."""
+        normalized_output = output.casefold()
+        if expected_tokens and not all(token.casefold() in normalized_output for token in expected_tokens):
+            raise RuntimeError(f"Postcheck semántico no confirmado para: {command}")
+
     def _write_redacted_backup(self, running_config: str, plan_name: str) -> Path:
         self.backup_directory.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
@@ -190,7 +197,13 @@ class CiscoExecutor:
             if errors:
                 raise ConfigInvalidException("; ".join(errors))
             for command in plan.postchecks:
-                report.postcheck_output[command] = redact_text(self._run_show(command))
+                postcheck_output = self._run_show(command)
+                self._verify_postcheck(
+                    command,
+                    postcheck_output,
+                    plan.postcheck_expectations.get(command, ()),
+                )
+                report.postcheck_output[command] = redact_text(postcheck_output)
             report.status = ResultStatus.APPLIED
             report.message = "Plan aplicado y postchecks completados."
         except Exception as exc:
@@ -219,7 +232,7 @@ class CiscoExecutor:
                 )
                 if rolled_back:
                     report.status = ResultStatus.ROLLED_BACK
-                    report.message = "El plan fallo y el checkpoint fue restaurado."
+                    report.message = f"{report.message} El checkpoint fue restaurado."
         finally:
             report.finished_at = datetime.now(UTC)
             self.audit.event(

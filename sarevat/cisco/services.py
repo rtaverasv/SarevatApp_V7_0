@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ipaddress
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -200,6 +201,7 @@ def _simple_plan(
     *,
     warnings: list[str] | None = None,
     postchecks: tuple[str, ...] = (),
+    postcheck_expectations: dict[str, tuple[str, ...]] | None = None,
 ) -> CommandPlan:
     spec = SERVICE_CATALOG[service]
     plan_warnings = list(warnings or [])
@@ -219,6 +221,7 @@ def _simple_plan(
         interfaces=frozenset(interfaces),
         prechecks=("show clock",),
         postchecks=postchecks,
+        postcheck_expectations=postcheck_expectations or {},
         warnings=tuple(plan_warnings),
     )
 
@@ -237,6 +240,7 @@ def build_service_plan(
     commands: list[str] = []
     interfaces: set[str] = set()
     postchecks: tuple[str, ...] = ()
+    postcheck_expectations: dict[str, tuple[str, ...]] = {}
 
     if service == "vlan_acceso":
         vlan = validate_vlan(_value(data, "vlan"))
@@ -349,6 +353,7 @@ def build_service_plan(
         next_hop = validate_ipv4(str(_value(data, "next_hop")))
         commands = [f"ip route {network.network_address} {network.netmask} {next_hop}"]
         postchecks = (f"show ip route {network.network_address}",)
+        postcheck_expectations = {postchecks[0]: (str(network.network_address),)}
     elif service == "ospf":
         process = _integer(data, "process", 1, 65_535)
         address = validate_ipv4(str(_value(data, "network_address")))
@@ -384,6 +389,7 @@ def build_service_plan(
         interfaces.add(interface)
         commands = [f"interface {interface}", f"ip helper-address {server}", "exit"]
         postchecks = (f"show running-config interface {interface}",)
+        postcheck_expectations = {postchecks[0]: (f"ip helper-address {server}",)}
     elif service == "nat":
         inside = _interface(data, "inside", facts)
         outside = _interface(data, "outside", facts)
@@ -464,8 +470,16 @@ def build_service_plan(
     elif service == "password_encryption":
         commands = ["service password-encryption"]
         postchecks = ("show running-config | include service password-encryption",)
+        postcheck_expectations = {postchecks[0]: ("service password-encryption",)}
 
-    return _simple_plan(service, commands, interfaces, facts, postchecks=postchecks)
+    return _simple_plan(
+        service,
+        commands,
+        interfaces,
+        facts,
+        postchecks=postchecks,
+        postcheck_expectations=postcheck_expectations,
+    )
 
 
 def build_initial_setup_plan(data: dict[str, Any]) -> CommandPlan:
@@ -495,7 +509,109 @@ def build_initial_setup_plan(data: dict[str, Any]) -> CommandPlan:
         commands=commands,
         prechecks=("show version", "show running-config | include hostname|username|ip ssh"),
         postchecks=("show ip ssh", "show running-config | section line vty"),
+        postcheck_expectations={
+            "show ip ssh": ("version 2",),
+            "show running-config | section line vty": ("login local", "transport input ssh"),
+        },
         metadata={"interactive_commands": (f"crypto key generate rsa modulus {rsa_bits}",)},
+    )
+
+
+def build_observability_template(ntp_server: str, syslog_server: str) -> CommandPlan:
+    """Prepara controles básicos de tiempo y registro sin almacenar secretos."""
+    ntp = validate_ipv4(ntp_server)
+    syslog = validate_ipv4(syslog_server)
+    return CommandPlan(
+        name="Plantilla NTP y syslog",
+        service="observability_template",
+        commands=(
+            "service timestamps log datetime msec",
+            f"ntp server {ntp}",
+            f"logging host {syslog}",
+        ),
+        prechecks=("show clock",),
+        postchecks=("show ntp associations", "show logging"),
+        warnings=("NTP puede tardar unos minutos en sincronizarse.",),
+    )
+
+
+def build_basic_hardening_plan(facts: DeviceFacts) -> CommandPlan:
+    """Corrige solo controles básicos ausentes sin alterar las líneas VTY."""
+    current = facts.running_config.casefold()
+    commands: list[str] = []
+    expectations: dict[str, tuple[str, ...]] = {}
+    if "ip ssh version 2" not in current:
+        commands.append("ip ssh version 2")
+        expectations["show ip ssh"] = ("version 2",)
+    if "service password-encryption" not in current:
+        commands.append("service password-encryption")
+        expectations["show running-config | include service password-encryption"] = (
+            "service password-encryption",
+        )
+    if not commands:
+        raise ValidationError("Los controles básicos ya están presentes.")
+    return CommandPlan(
+        name="Endurecimiento básico seguro",
+        service="basic_hardening",
+        commands=tuple(commands),
+        prechecks=("show ip ssh", "show running-config | include service password-encryption"),
+        postchecks=tuple(expectations),
+        postcheck_expectations=expectations,
+        warnings=(
+            "No crea claves RSA ni modifica líneas VTY, usuarios, AAA o SNMP.",
+        ),
+    )
+
+
+def build_snmpv3_plan(group: str, username: str, auth_password: str, privacy_password: str) -> CommandPlan:
+    """Crea SNMPv3 sin eliminar configuraciones de monitoreo existentes."""
+    group_value = validate_cisco_text(group, "Grupo SNMPv3", max_length=32, allow_spaces=False)
+    user_value = validate_cisco_text(username, "Usuario SNMPv3", max_length=32, allow_spaces=False)
+    auth_value = validate_cisco_text(
+        auth_password, "Clave de autenticacion", max_length=64, allow_spaces=False
+    )
+    privacy_value = validate_cisco_text(
+        privacy_password, "Clave de privacidad", max_length=64, allow_spaces=False
+    )
+    return CommandPlan(
+        name="SNMPv3 con autenticacion y privacidad",
+        service="snmpv3",
+        commands=(
+            f"snmp-server group {group_value} v3 priv",
+            f"snmp-server user {user_value} {group_value} v3 auth sha {auth_value} "
+            f"priv aes 128 {privacy_value}",
+        ),
+        prechecks=("show snmp user",),
+        postchecks=("show snmp user",),
+        warnings=("No se eliminan comunidades ni usuarios SNMP existentes.",),
+    )
+
+
+def build_aaa_local_plan(
+    local_username: str,
+    facts: DeviceFacts,
+    console_fallback_verified: bool,
+) -> CommandPlan:
+    """Prepara AAA local solo con una recuperación explícitamente verificada."""
+    username = validate_cisco_text(local_username, "Usuario local", max_length=64, allow_spaces=False)
+    if not console_fallback_verified:
+        raise ValidationError("AAA requiere confirmar una consola local de recuperación.")
+    user_pattern = re.compile(rf"(?im)^\s*username\s+{re.escape(username)}\b")
+    if not user_pattern.search(facts.running_config):
+        raise ValidationError("El usuario local indicado no existe en la configuración actual.")
+    return CommandPlan(
+        name="AAA local con recuperación por consola",
+        service="aaa_local",
+        commands=("aaa new-model", "aaa authentication login default local"),
+        prechecks=("show running-config | include ^username", "show running-config | include ^aaa"),
+        postchecks=("show running-config | include ^aaa authentication login default local",),
+        postcheck_expectations={
+            "show running-config | include ^aaa authentication login default local": (
+                "aaa authentication login default local",
+            )
+        },
+        warnings=(
+            "Mantén la consola local conectada hasta probar un nuevo acceso antes de cerrar sesión.",),
     )
 
 

@@ -12,6 +12,13 @@ dependencies = [
 [project.scripts]
 sarevat = "sarevat.cli:main"
 
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sarevat*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
