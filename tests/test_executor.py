@@ -20,6 +20,8 @@ class FakeConnection:
             "show running-config": "hostname R1\nusername admin secret TOPSECRET\n",
             "show clock": "12:00:00 UTC",
             "show ip interface brief": "GigabitEthernet0/0 10.0.0.1 YES manual up up",
+            "show ip ssh": "SSH Enabled - version 2.0",
+            "show running-config | section line vty": "line vty 0 15\n login local\n transport input ssh",
         }
         return responses.get(command, "OK")
 

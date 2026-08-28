@@ -200,6 +200,7 @@ def _simple_plan(
     *,
     warnings: list[str] | None = None,
     postchecks: tuple[str, ...] = (),
+    postcheck_expectations: dict[str, tuple[str, ...]] | None = None,
 ) -> CommandPlan:
     spec = SERVICE_CATALOG[service]
     plan_warnings = list(warnings or [])
@@ -219,6 +220,7 @@ def _simple_plan(
         interfaces=frozenset(interfaces),
         prechecks=("show clock",),
         postchecks=postchecks,
+        postcheck_expectations=postcheck_expectations or {},
         warnings=tuple(plan_warnings),
     )
 
@@ -237,6 +239,7 @@ def build_service_plan(
     commands: list[str] = []
     interfaces: set[str] = set()
     postchecks: tuple[str, ...] = ()
+    postcheck_expectations: dict[str, tuple[str, ...]] = {}
 
     if service == "vlan_acceso":
         vlan = validate_vlan(_value(data, "vlan"))
@@ -349,6 +352,7 @@ def build_service_plan(
         next_hop = validate_ipv4(str(_value(data, "next_hop")))
         commands = [f"ip route {network.network_address} {network.netmask} {next_hop}"]
         postchecks = (f"show ip route {network.network_address}",)
+        postcheck_expectations = {postchecks[0]: (str(network.network_address),)}
     elif service == "ospf":
         process = _integer(data, "process", 1, 65_535)
         address = validate_ipv4(str(_value(data, "network_address")))
@@ -384,6 +388,7 @@ def build_service_plan(
         interfaces.add(interface)
         commands = [f"interface {interface}", f"ip helper-address {server}", "exit"]
         postchecks = (f"show running-config interface {interface}",)
+        postcheck_expectations = {postchecks[0]: (f"ip helper-address {server}",)}
     elif service == "nat":
         inside = _interface(data, "inside", facts)
         outside = _interface(data, "outside", facts)
@@ -464,8 +469,16 @@ def build_service_plan(
     elif service == "password_encryption":
         commands = ["service password-encryption"]
         postchecks = ("show running-config | include service password-encryption",)
+        postcheck_expectations = {postchecks[0]: ("service password-encryption",)}
 
-    return _simple_plan(service, commands, interfaces, facts, postchecks=postchecks)
+    return _simple_plan(
+        service,
+        commands,
+        interfaces,
+        facts,
+        postchecks=postchecks,
+        postcheck_expectations=postcheck_expectations,
+    )
 
 
 def build_initial_setup_plan(data: dict[str, Any]) -> CommandPlan:
@@ -495,6 +508,10 @@ def build_initial_setup_plan(data: dict[str, Any]) -> CommandPlan:
         commands=commands,
         prechecks=("show version", "show running-config | include hostname|username|ip ssh"),
         postchecks=("show ip ssh", "show running-config | section line vty"),
+        postcheck_expectations={
+            "show ip ssh": ("version 2",),
+            "show running-config | section line vty": ("login local", "transport input ssh"),
+        },
         metadata={"interactive_commands": (f"crypto key generate rsa modulus {rsa_bits}",)},
     )
 

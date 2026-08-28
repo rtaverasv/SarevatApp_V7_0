@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import runpy
 from datetime import UTC, datetime
 from pathlib import Path
@@ -414,10 +415,24 @@ def test_main_dispatches_every_menu_option(monkeypatch: pytest.MonkeyPatch, tmp_
     monkeypatch.setattr(cli, "_connect", lambda *_: called.append("connect"))
     monkeypatch.setattr(cli, "_standalone_vlsm", lambda *_: called.append("vlsm"))
     monkeypatch.setattr(cli, "_scanner_menu", lambda *_: called.append("scanner"))
-    answers = iter(["1", "2", "3", "4"])
+    monkeypatch.setattr(cli, "_inventory_menu", lambda *_: called.append("inventory"))
+    answers = iter(["1", "2", "3", "4", "0"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     assert cli.main() == 0
-    assert called == ["connect", "vlsm", "scanner"]
+    assert called == ["connect", "vlsm", "scanner", "inventory"]
+
+
+def test_inventory_menu_creates_lists_and_removes_a_profile(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    paths = _paths(tmp_path)
+    audit = AuditLogger(paths.logs)
+    answers = iter(["2", "Laboratorio", "1", "router", "192.0.2.10", "admin", "1", "4", "1", "0"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    cli._inventory_menu(paths, audit)
+    audit.close()
+    saved = json.loads((paths.root / "inventory.json").read_text(encoding="utf-8"))
+    assert saved["profiles"] == []
 
 
 def test_entrypoint_calls_sys_exit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -429,7 +444,7 @@ def test_entrypoint_calls_sys_exit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_cli_module_entrypoint_calls_main(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("builtins.input", lambda _: "4")
+    monkeypatch.setattr("builtins.input", lambda _: "0")
     with pytest.raises(SystemExit) as raised:
         runpy.run_path(str(Path(cli.__file__)), run_name="__main__")
     assert raised.value.code == 0
@@ -444,7 +459,7 @@ def test_main_invalid_exit_interrupt_and_fatal(monkeypatch: pytest.MonkeyPatch, 
         return cli.AppPaths(root, logs, backups, reports)
 
     monkeypatch.setattr(cli.AppPaths, "create", classmethod(temporary_paths))
-    answers = iter(["9", "4"])
+    answers = iter(["9", "0"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     assert cli.main() == 0
 

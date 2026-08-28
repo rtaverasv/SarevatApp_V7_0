@@ -68,6 +68,7 @@ class CommandPlan:
     interfaces: frozenset[str] = frozenset()
     prechecks: tuple[str, ...] = ()
     postchecks: tuple[str, ...] = ()
+    postcheck_expectations: dict[str, tuple[str, ...]] = field(default_factory=dict, compare=False)
     warnings: tuple[str, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict, compare=False)
 
@@ -76,6 +77,11 @@ class CommandPlan:
             raise ValueError("El plan necesita un nombre.")
         if not self.commands:
             raise ValueError("El plan no contiene comandos.")
+        unknown_checks = set(self.postcheck_expectations) - set(self.postchecks)
+        if unknown_checks:
+            raise ValueError("Cada expectativa debe corresponder a un postcheck declarado.")
+        if any(not tokens for tokens in self.postcheck_expectations.values()):
+            raise ValueError("Cada postcheck semántico necesita al menos una evidencia esperada.")
 
 
 @dataclass(frozen=True, slots=True)

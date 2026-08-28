@@ -18,20 +18,46 @@ version original `D:\Downloads\SarevatApp_V6_4.py` se conserva intacta.
 ## Ejecucion
 
 ```powershell
-cd D:\Documents\ChatGPT\SarevatApp
+cd C:\ruta\a\SarevatApp_V7_0
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 python .\SarevatApp_V7_0.py
 ```
 
 La aplicacion crea `runtime\` solamente al ejecutarse. Alli guarda logs, respaldos redactados y reportes.
 
+También puedes instalar el comando `sarevat` con `python -m pip install .` y
+ejecutarlo desde la terminal. El menú y las protecciones de seguridad son los
+mismos en ambas formas de inicio.
+
+## Inventario y perfiles
+
+La opción **4) Inventario y perfiles** permite guardar el nombre del equipo,
+su tipo, IPv4 o puerto serial y el usuario habitual. Al conectar desde un
+perfil, SarevatApp actualiza el modelo, versión y último momento en que fue
+visto.
+
+Las contraseñas y el enable secret **no se guardan**: la aplicación los pide
+solo cuando vas a conectar. El inventario queda en `runtime/inventory.json`,
+que se mantiene local y fuera de Git.
+
+Cuando preparas un servicio, VLSM o la configuración inicial, SarevatApp guarda
+una vista segura del plan en `runtime/drafts.json`. Puedes verla o eliminarla
+desde **Inventario y perfiles > 5) Ver borradores seguros**. Estos borradores
+ocultan secretos y sirven para revisar o documentar; no aplican comandos por sí
+solos.
+
 ## Pruebas
 
 ```powershell
-python -m pytest -q --cov=sarevat
-python -m ruff check SarevatApp_V7_0.py sarevat tests
-python -m bandit -q -r sarevat SarevatApp_V7_0.py
+python -m pip install -r requirements-dev.txt
+.\scripts\validar_calidad.ps1
 ```
+
+Si tu entorno virtual usa otro intérprete, indícalo sin cambiar el script:
+`.\scripts\validar_calidad.ps1 -Python .\.venv\Scripts\python.exe`.
 
 ## Flujo seguro de configuracion
 

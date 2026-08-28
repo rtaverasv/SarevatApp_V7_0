@@ -19,6 +19,7 @@ class ScenarioConnection:
         config_output: str = "description OK",
         config_exception: Exception | None = None,
         postcheck_error: bool = False,
+        postcheck_output: str = "OK",
         rsa_prompt: str = "RSA keys generated",
         rollback_output: str = "Configure replace completed successfully",
     ) -> None:
@@ -28,6 +29,7 @@ class ScenarioConnection:
         self.config_output = config_output
         self.config_exception = config_exception
         self.postcheck_error = postcheck_error
+        self.postcheck_output = postcheck_output
         self.rsa_prompt = rsa_prompt
         self.rollback_output = rollback_output
         self.timing: list[str] = []
@@ -40,6 +42,8 @@ class ScenarioConnection:
             return "% Invalid input detected at '^' marker."
         if command == "show ip interface brief" and self.postcheck_error:
             return "% Error: postcheck unavailable"
+        if command == "show ip interface brief":
+            return self.postcheck_output
         return "OK"
 
     def send_command_timing(self, command: str, **_: object) -> str:
@@ -141,6 +145,24 @@ def test_failed_postcheck_triggers_rollback(tmp_path: Path) -> None:
     audit.close()
     assert report.status is ResultStatus.ROLLED_BACK
     assert report.rolled_back
+
+
+def test_semantic_postcheck_failure_triggers_rollback(tmp_path: Path) -> None:
+    connection = ScenarioConnection(postcheck_output="GigabitEthernet0/0 unassigned down down")
+    executor, audit = _executor(tmp_path, connection)
+    plan = CommandPlan(
+        name="verificacion semantica",
+        service="test",
+        commands=("interface GigabitEthernet0/0", "description TEST", "exit"),
+        prechecks=("show clock",),
+        postchecks=("show ip interface brief",),
+        postcheck_expectations={"show ip interface brief": ("10.10.10.1",)},
+    )
+    report = executor.execute(plan, dry_run=False, confirm=lambda _: True)
+    audit.close()
+    assert report.status is ResultStatus.ROLLED_BACK
+    assert report.rolled_back
+    assert "semántico" in report.message
 
 
 def test_rollback_can_be_declined(tmp_path: Path) -> None:

@@ -23,6 +23,8 @@ from sarevat.cisco.services import (
     build_service_plan,
     service_is_configured,
 )
+from sarevat.drafts import DraftStore, PlanDraft
+from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport
 from sarevat.scanner import (
@@ -86,7 +88,17 @@ def _preview_plan(plan: CommandPlan) -> None:
         print(Fore.WHITE + "  " + redact_command(command))
 
 
-def _execute_interactive(executor: CiscoExecutor, plan: CommandPlan) -> None:
+def _execute_interactive(
+    executor: CiscoExecutor,
+    plan: CommandPlan,
+    draft_store: DraftStore | None = None,
+) -> None:
+    if draft_store:
+        try:
+            draft_store.add_plan(plan)
+            print(Fore.BLUE + "Vista segura del plan guardada en borradores.")
+        except (OSError, ValueError) as exc:
+            print(Fore.YELLOW + f"No se pudo guardar el borrador: {exc}")
     _preview_plan(plan)
     dry_report = executor.execute(plan, dry_run=True)
     _print_report(dry_report)
@@ -100,6 +112,17 @@ def _execute_interactive(executor: CiscoExecutor, plan: CommandPlan) -> None:
         rollback_on_error=True,
     )
     _print_report(report)
+
+
+def _execute_with_draft(
+    executor: CiscoExecutor,
+    plan: CommandPlan,
+    draft_store: DraftStore | None,
+) -> None:
+    if draft_store:
+        _execute_interactive(executor, plan, draft_store)
+    else:
+        _execute_interactive(executor, plan)
 
 
 def _collect_service_data(service: str) -> dict[str, Any]:
@@ -124,6 +147,7 @@ def _service_menu(
     executor: CiscoExecutor,
     facts: DeviceFacts,
     device_kind: DeviceKind,
+    draft_store: DraftStore | None = None,
 ) -> None:
     available = [(key, spec) for key, spec in SERVICE_CATALOG.items() if device_kind in spec.devices]
     while True:
@@ -152,7 +176,7 @@ def _service_menu(
                         facts,
                         device_kind,
                     )
-                    _execute_interactive(executor, dependency_plan)
+                    _execute_with_draft(executor, dependency_plan, draft_store)
                     facts = discover_device(executor.connection)
                     if not service_is_configured(dependency, facts):
                         print(Fore.YELLOW + "La dependencia no quedo confirmada; servicio cancelado.")
@@ -164,11 +188,11 @@ def _service_menu(
                         facts,
                         device_kind,
                     )
-                    _execute_interactive(executor, plan)
+                    _execute_with_draft(executor, plan, draft_store)
                     facts = discover_device(executor.connection)
                 continue
             plan = build_service_plan(service, _collect_service_data(service), facts, device_kind)
-            _execute_interactive(executor, plan)
+            _execute_with_draft(executor, plan, draft_store)
             facts = discover_device(executor.connection)
         except ValidationError as exc:
             print(Fore.YELLOW + f"Datos invalidos: {exc}")
@@ -211,7 +235,11 @@ def _free_console(connection: Any, audit: AuditLogger) -> None:
             print(Fore.RED + "IOS rechazo o cuestiono el comando.")
 
 
-def _device_vlsm(executor: CiscoExecutor, facts: DeviceFacts) -> None:
+def _device_vlsm(
+    executor: CiscoExecutor,
+    facts: DeviceFacts,
+    draft_store: DraftStore | None = None,
+) -> None:
     base = input(Fore.CYAN + "Red base CIDR: ").strip()
     requests: list[SubnetRequest] = []
     selected_interfaces: list[str] = []
@@ -232,12 +260,19 @@ def _device_vlsm(executor: CiscoExecutor, facts: DeviceFacts) -> None:
             allocation.netmask,
             facts,
         )
-        _execute_interactive(executor, interface_plan)
+        _execute_with_draft(executor, interface_plan, draft_store)
 
 
-def _device_session(connection: Any, device_kind: DeviceKind, paths: AppPaths, audit: AuditLogger) -> None:
+def _device_session(
+    connection: Any,
+    device_kind: DeviceKind,
+    paths: AppPaths,
+    audit: AuditLogger,
+    facts: DeviceFacts | None = None,
+) -> None:
     executor = CiscoExecutor(connection, audit=audit, backup_directory=paths.backups)
-    facts = discover_device(connection)
+    draft_store = DraftStore(paths.root / "drafts.json")
+    facts = facts or discover_device(connection)
     audit.event("device_discovered", hostname=facts.hostname, model=facts.model, version=facts.version)
     while True:
         print(Fore.MAGENTA + Style.BRIGHT + f"\n=== {facts.hostname} ===")
@@ -255,11 +290,11 @@ def _device_session(connection: Any, device_kind: DeviceKind, paths: AppPaths, a
             facts = discover_device(connection)
             _show_facts(facts)
         elif choice == "2":
-            _service_menu(executor, facts, device_kind)
+            _service_menu(executor, facts, device_kind, draft_store)
             facts = discover_device(connection)
         elif choice == "3":
             try:
-                _device_vlsm(executor, facts)
+                _device_vlsm(executor, facts, draft_store)
             except (ValidationError, ValueError) as exc:
                 print(Fore.YELLOW + f"VLSM cancelado: {exc}")
         elif choice == "4":
@@ -273,7 +308,7 @@ def _device_session(connection: Any, device_kind: DeviceKind, paths: AppPaths, a
                 "rsa_bits": input("RSA [2048/3072/4096]: ").strip(),
             }
             try:
-                _execute_interactive(executor, build_initial_setup_plan(data))
+                _execute_with_draft(executor, build_initial_setup_plan(data), draft_store)
             except ValidationError as exc:
                 print(Fore.YELLOW + str(exc))
         elif choice == "6":
@@ -285,37 +320,60 @@ def _device_session(connection: Any, device_kind: DeviceKind, paths: AppPaths, a
             print(Fore.YELLOW + "Opcion invalida.")
 
 
-def _connect(paths: AppPaths, audit: AuditLogger) -> None:
-    print("  1) SSH")
-    print("  2) Consola serial")
-    mode = input("> ").strip()
-    kind_text = input("Equipo [router/switch]: ").strip().lower()
-    if kind_text not in {"router", "switch"}:
-        print(Fore.YELLOW + "Tipo de equipo invalido.")
-        return
-    kind = DeviceKind(kind_text)
+def _connect(
+    paths: AppPaths,
+    audit: AuditLogger,
+    profile: ConnectionProfile | None = None,
+    inventory: InventoryStore | None = None,
+) -> None:
     try:
-        if mode == "1":
-            host = str(validate_ipv4(input("IPv4 del equipo: ").strip()))
-            params = {
-                "device_type": "cisco_ios",
-                "host": host,
-                "username": input("Usuario: ").strip(),
-                "password": getpass.getpass("Password: "),
-                "secret": getpass.getpass("Enable secret (Enter si no aplica): "),
-            }
-        elif mode == "2":
-            port = input("Puerto [COM3]: ").strip()
-            baudrate = int(input("Baudrate [9600]: ").strip() or "9600")
-            if baudrate <= 0:
-                raise ValueError("El baudrate debe ser positivo.")
-            params = {
-                "device_type": "cisco_ios_serial",
-                "serial_settings": {"port": port, "baudrate": baudrate},
-            }
+        if profile:
+            kind = profile.device_kind
+            mode = "1" if profile.transport == "ssh" else "2"
+            if profile.transport == "ssh":
+                username = profile.username or input("Usuario: ").strip()
+                params = {
+                    "device_type": "cisco_ios",
+                    "host": profile.host,
+                    "username": username,
+                    "password": getpass.getpass("Password: "),
+                    "secret": getpass.getpass("Enable secret (Enter si no aplica): "),
+                }
+            else:
+                params = {
+                    "device_type": "cisco_ios_serial",
+                    "serial_settings": {"port": profile.serial_port, "baudrate": profile.baudrate},
+                }
         else:
-            print(Fore.YELLOW + "Modo invalido.")
-            return
+            print("  1) SSH")
+            print("  2) Consola serial")
+            mode = input("> ").strip()
+            kind_text = input("Equipo [router/switch]: ").strip().lower()
+            if kind_text not in {"router", "switch"}:
+                print(Fore.YELLOW + "Tipo de equipo invalido.")
+                return
+            kind = DeviceKind(kind_text)
+            if mode == "1":
+                host = str(validate_ipv4(input("IPv4 del equipo: ").strip()))
+                params = {
+                    "device_type": "cisco_ios",
+                    "host": host,
+                    "username": input("Usuario: ").strip(),
+                    "password": getpass.getpass("Password: "),
+                    "secret": getpass.getpass("Enable secret (Enter si no aplica): "),
+                }
+            elif mode == "2":
+                port = input("Puerto [COM3]: ").strip()
+                baudrate = int(input("Baudrate [9600]: ").strip() or "9600")
+                if baudrate <= 0:
+                    raise ValueError("El baudrate debe ser positivo.")
+                params = {
+                    "device_type": "cisco_ios_serial",
+                    "serial_settings": {"port": port, "baudrate": baudrate},
+                }
+            else:
+                print(Fore.YELLOW + "Modo invalido.")
+                return
     except (ValidationError, ValueError) as exc:
         print(Fore.YELLOW + f"Parametros de conexion invalidos: {exc}")
         audit.event("connection_failed", reason=f"parametros invalidos: {exc}")
@@ -325,7 +383,10 @@ def _connect(paths: AppPaths, audit: AuditLogger) -> None:
         with ConnectHandler(**params) as connection:
             if params.get("secret") and not connection.check_enable_mode():
                 connection.enable()
-            _device_session(connection, kind, paths, audit)
+            facts = discover_device(connection)
+            if profile and inventory:
+                inventory.update_discovery(profile.id, facts)
+            _device_session(connection, kind, paths, audit, facts)
     except NetmikoAuthenticationException:
         print(Fore.RED + "Autenticacion rechazada.")
         audit.event("connection_failed", reason="authentication")
@@ -335,6 +396,150 @@ def _connect(paths: AppPaths, audit: AuditLogger) -> None:
     except (OSError, ValueError) as exc:
         print(Fore.RED + f"No se pudo conectar: {redact_text(str(exc))}")
         audit.event("connection_failed", reason=str(exc))
+
+
+def _show_profiles(profiles: list[ConnectionProfile]) -> None:
+    if not profiles:
+        print(Fore.YELLOW + "Aun no hay perfiles guardados.")
+        return
+    print(Fore.MAGENTA + Style.BRIGHT + "\n=== Inventario guardado ===")
+    for index, profile in enumerate(profiles, 1):
+        target = profile.host if profile.transport == "ssh" else profile.serial_port
+        seen = profile.last_seen_at or "sin conexión registrada"
+        print(
+            f"  {index}) {profile.name} | {profile.device_kind.value} | "
+            f"{profile.transport.upper()} {target} | visto: {seen}"
+        )
+
+
+def _select_profile(store: InventoryStore) -> ConnectionProfile | None:
+    profiles = store.list_profiles()
+    _show_profiles(profiles)
+    if not profiles:
+        return None
+    try:
+        selection = int(input("Perfil (0 para volver): ").strip())
+    except ValueError:
+        print(Fore.YELLOW + "Seleccion invalida.")
+        return None
+    if selection == 0:
+        return None
+    if not 1 <= selection <= len(profiles):
+        print(Fore.YELLOW + "Seleccion invalida.")
+        return None
+    return profiles[selection - 1]
+
+
+def _create_profile(store: InventoryStore) -> None:
+    try:
+        name = input("Nombre del perfil: ").strip()
+        transport = input("Conexion [1 SSH / 2 serial]: ").strip()
+        kind_text = input("Equipo [router/switch]: ").strip().lower()
+        if kind_text not in {"router", "switch"}:
+            raise ValueError("Tipo de equipo invalido.")
+        kind = DeviceKind(kind_text)
+        if transport == "1":
+            host = str(validate_ipv4(input("IPv4 del equipo: ").strip()))
+            username = input("Usuario habitual (opcional): ").strip()
+            profile = ConnectionProfile.create_ssh(name, host, username, kind)
+        elif transport == "2":
+            port = input("Puerto [COM3]: ").strip()
+            baudrate = int(input("Baudrate [9600]: ").strip() or "9600")
+            profile = ConnectionProfile.create_serial(name, port, baudrate, kind)
+        else:
+            raise ValueError("Modo de conexion invalido.")
+        store.add(profile)
+        print(Fore.GREEN + "Perfil guardado. Las contraseñas nunca se almacenan.")
+    except (ValidationError, ValueError) as exc:
+        print(Fore.YELLOW + f"No se pudo guardar el perfil: {exc}")
+
+
+def _show_drafts(drafts: list[PlanDraft]) -> None:
+    if not drafts:
+        print(Fore.YELLOW + "Aun no hay borradores guardados.")
+        return
+    print(Fore.MAGENTA + Style.BRIGHT + "\n=== Borradores seguros ===")
+    for index, draft in enumerate(drafts, 1):
+        print(f"  {index}) {draft.name} | {draft.service} | {draft.created_at}")
+
+
+def _select_draft(store: DraftStore) -> PlanDraft | None:
+    drafts = store.list_drafts()
+    _show_drafts(drafts)
+    if not drafts:
+        return None
+    try:
+        selection = int(input("Borrador (0 para volver): ").strip())
+    except ValueError:
+        print(Fore.YELLOW + "Seleccion invalida.")
+        return None
+    if not 1 <= selection <= len(drafts):
+        return None
+    return drafts[selection - 1]
+
+
+def _draft_menu(paths: AppPaths) -> None:
+    store = DraftStore(paths.root / "drafts.json")
+    while True:
+        print(Fore.MAGENTA + Style.BRIGHT + "\n=== Borradores seguros ===")
+        print("  1) Ver borradores")
+        print("  2) Ver comandos de un borrador")
+        print("  3) Eliminar un borrador")
+        print("  0) Volver")
+        choice = input("> ").strip()
+        try:
+            if choice == "0":
+                return
+            if choice == "1":
+                _show_drafts(store.list_drafts())
+            elif choice == "2":
+                draft = _select_draft(store)
+                if draft:
+                    print(Fore.BLUE + f"\n=== {draft.name} ===")
+                    for command in draft.commands:
+                        print(f"  {command}")
+            elif choice == "3":
+                draft = _select_draft(store)
+                if draft and store.remove(draft.id):
+                    print(Fore.GREEN + "Borrador eliminado.")
+            else:
+                print(Fore.YELLOW + "Opcion invalida.")
+        except ValueError as exc:
+            print(Fore.YELLOW + f"Borradores no disponibles: {exc}")
+
+
+def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
+    store = InventoryStore(paths.root / "inventory.json")
+    while True:
+        print(Fore.MAGENTA + Style.BRIGHT + "\n=== Inventario y perfiles ===")
+        print("  1) Ver equipos guardados")
+        print("  2) Guardar nuevo perfil")
+        print("  3) Conectar usando un perfil")
+        print("  4) Eliminar un perfil")
+        print("  5) Ver borradores seguros")
+        print("  0) Volver")
+        choice = input("> ").strip()
+        try:
+            if choice == "0":
+                return
+            if choice == "1":
+                _show_profiles(store.list_profiles())
+            elif choice == "2":
+                _create_profile(store)
+            elif choice == "3":
+                profile = _select_profile(store)
+                if profile:
+                    _connect(paths, audit, profile=profile, inventory=store)
+            elif choice == "4":
+                profile = _select_profile(store)
+                if profile and store.remove(profile.id):
+                    print(Fore.GREEN + "Perfil eliminado.")
+            elif choice == "5":
+                _draft_menu(paths)
+            else:
+                print(Fore.YELLOW + "Opcion invalida.")
+        except ValueError as exc:
+            print(Fore.YELLOW + f"Inventario no disponible: {exc}")
 
 
 def _standalone_vlsm(paths: AppPaths) -> None:
@@ -410,9 +615,10 @@ def main() -> int:
             print("  1) Conectar a equipo Cisco")
             print("  2) Planificar VLSM IPv4")
             print("  3) Escaner IPv4")
-            print("  4) Salir")
+            print("  4) Inventario y perfiles")
+            print("  0) Salir")
             choice = input("> ").strip()
-            if choice == "4":
+            if choice == "0":
                 return 0
             if choice == "1":
                 _connect(paths, audit)
@@ -420,6 +626,8 @@ def main() -> int:
                 _standalone_vlsm(paths)
             elif choice == "3":
                 _scanner_menu(paths)
+            elif choice == "4":
+                _inventory_menu(paths, audit)
             else:
                 print(Fore.YELLOW + "Opcion invalida.")
     except (KeyboardInterrupt, EOFError):
