@@ -111,6 +111,9 @@ Para la prueba con un equipo Cisco autorizado, sigue
 [`PRUEBA_REAL_11AM.md`](PRUEBA_REAL_11AM.md) y ejecuta
 `.\scripts\preflight_prueba_real.ps1` antes de conectar.
 
+La navegación completa de la aplicación está explicada en
+[`GUIA_DE_USO.md`](GUIA_DE_USO.md).
+
 ## Flujo seguro de configuracion
 
 1. Descubrir inventario, version y configuracion actual.

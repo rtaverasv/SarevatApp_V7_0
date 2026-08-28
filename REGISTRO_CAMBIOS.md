@@ -15,6 +15,19 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-28 07:00:54 -04:00 — Guía paso a paso de uso y navegación
+
+- **Cambio:** se añadió una guía práctica en español que explica el inicio,
+  menús, navegación, conexión SSH/serial, aplicación segura de planes,
+  inventario, VLSM, escáner, AAA, SNMPv3 y ubicación de los resultados.
+- **Motivo:** facilitar el uso de la aplicación durante el piloto y reducir
+  errores de navegación o de orden operativo.
+- **Archivos afectados:** `GUIA_DE_USO.md`, `README.md` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** se contrastaron las rutas descritas con los menús y flujos
+  actuales de `sarevat/cli.py`. No se ejecutaron pruebas de código porque el
+  cambio solo incorpora documentación.
+
 ### 2026-08-28 06:37:05 -04:00 — Preparación del piloto Cisco autorizado
 
 - **Cambio:** se añadió una preflight local de un solo comando y una guía para
