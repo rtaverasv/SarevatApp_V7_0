@@ -32,6 +32,7 @@ class ConnectionProfile:
     version: str = "desconocida"
     serial: str = "desconocido"
     last_seen_at: str | None = None
+    groups: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -52,15 +53,20 @@ class ConnectionProfile:
                 raise ValueError("Un perfil serial necesita un puerto.")
             if not self.baudrate or self.baudrate <= 0:
                 raise ValueError("El baudrate debe ser positivo.")
+        object.__setattr__(self, "groups", _normalize_groups(self.groups))
 
     @classmethod
     def create_ssh(cls, name: str, host: str, username: str, device_kind: DeviceKind) -> ConnectionProfile:
+        try:
+            normalized_host = str(ipaddress.IPv4Address(host))
+        except ipaddress.AddressValueError as exc:
+            raise ValueError("La IPv4 del perfil no es válida.") from exc
         return cls(
             id=uuid.uuid4().hex,
             name=name.strip(),
             transport="ssh",
             device_kind=device_kind,
-            host=str(ipaddress.IPv4Address(host)),
+            host=normalized_host,
             username=username.strip() or None,
         )
 
@@ -86,6 +92,9 @@ class ConnectionProfile:
             last_seen_at=datetime.now(UTC).isoformat(),
         )
 
+    def with_groups(self, groups: str) -> ConnectionProfile:
+        return replace(self, groups=_normalize_groups(groups))
+
     def to_dict(self) -> dict[str, object]:
         data = asdict(self)
         data["device_kind"] = self.device_kind.value
@@ -106,6 +115,7 @@ class ConnectionProfile:
             version=str(data.get("version") or "desconocida"),
             serial=str(data.get("serial") or "desconocido"),
             last_seen_at=str(data["last_seen_at"]) if data.get("last_seen_at") else None,
+            groups=_normalize_groups(data.get("groups", ())),
         )
 
 
@@ -165,3 +175,26 @@ class InventoryStore:
         if updated:
             self.save_profiles(saved)
         return updated
+
+    def profiles_in_group(self, group: str) -> list[ConnectionProfile]:
+        normalized = group.strip().casefold()
+        if not normalized:
+            raise ValueError("Indica un grupo para filtrar.")
+        return [
+            profile
+            for profile in self.list_profiles()
+            if normalized in {item.casefold() for item in profile.groups}
+        ]
+
+
+def _normalize_groups(value: object) -> tuple[str, ...]:
+    if isinstance(value, str):
+        items = value.split(",")
+    elif isinstance(value, (list, tuple)):
+        items = [str(item) for item in value]
+    else:
+        return ()
+    groups = {item.strip() for item in items if item.strip()}
+    if any(len(item) > 32 for item in groups):
+        raise ValueError("Cada grupo puede tener hasta 32 caracteres.")
+    return tuple(sorted(groups, key=str.casefold))

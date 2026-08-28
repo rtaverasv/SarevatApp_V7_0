@@ -28,6 +28,17 @@ def test_serial_profile_and_removal(tmp_path) -> None:
     assert not store.list_profiles()
 
 
+def test_inventory_groups_are_normalized_and_filterable(tmp_path) -> None:
+    store = InventoryStore(tmp_path / "inventory.json")
+    profile = ConnectionProfile.create_ssh("R1", "192.0.2.1", "admin", DeviceKind.ROUTER)
+    profile = ConnectionProfile.from_dict(profile.to_dict() | {"groups": "Core, laboratorio, Core"})
+    store.add(profile)
+    assert store.list_profiles()[0].groups == ("Core", "laboratorio")
+    assert store.profiles_in_group("CORE") == [profile]
+    with pytest.raises(ValueError, match="grupo"):
+        store.profiles_in_group("")
+
+
 def test_inventory_rejects_invalid_schema_and_duplicate_name(tmp_path) -> None:
     path = tmp_path / "inventory.json"
     path.write_text(json.dumps({"schema_version": 99, "profiles": []}), encoding="utf-8")
@@ -39,3 +50,25 @@ def test_inventory_rejects_invalid_schema_and_duplicate_name(tmp_path) -> None:
     store.add(first)
     with pytest.raises(ValueError, match="existe"):
         store.add(ConnectionProfile.create_ssh("r1", "192.0.2.2", "admin", DeviceKind.ROUTER))
+
+
+@pytest.mark.parametrize(
+    ("factory", "message"),
+    [
+        (lambda: ConnectionProfile.create_ssh("R1", "not-an-ip", "admin", DeviceKind.ROUTER), "IPv4"),
+        (lambda: ConnectionProfile.create_serial("S1", "", 9600, DeviceKind.SWITCH), "puerto"),
+        (lambda: ConnectionProfile.create_serial("S1", "COM1", 0, DeviceKind.SWITCH), "baudrate"),
+    ],
+)
+def test_profile_rejects_invalid_connection_data(factory, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        factory()
+
+
+def test_inventory_rejects_invalid_json_and_unknown_removal(tmp_path) -> None:
+    path = tmp_path / "inventory.json"
+    path.write_text("no es json", encoding="utf-8")
+    with pytest.raises(ValueError, match="leer"):
+        InventoryStore(path).list_profiles()
+    store = InventoryStore(tmp_path / "empty.json")
+    assert not store.remove("missing")

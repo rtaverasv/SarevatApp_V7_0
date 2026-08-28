@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from sarevat import cli
+from sarevat.drafts import DraftStore
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import (
     CommandPlan,
@@ -88,6 +89,43 @@ def test_execute_interactive_cancel_and_apply(monkeypatch: pytest.MonkeyPatch) -
     assert calls[-1]["rollback_on_error"]
 
 
+def test_execute_interactive_saves_a_redacted_draft(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class FakeExecutor:
+        def execute(self, _plan: CommandPlan, **_kwargs: Any) -> ExecutionReport:
+            return _report(ResultStatus.PLANNED)
+
+    store = DraftStore(tmp_path / "drafts.json")
+    monkeypatch.setattr(cli, "_yes", lambda _: False)
+    cli._execute_interactive(
+        FakeExecutor(),  # type: ignore[arg-type]
+        CommandPlan("SNMP", "snmp", ("snmp-server community PRIVATE RO",)),
+        store,
+    )
+    stored = (tmp_path / "drafts.json").read_text(encoding="utf-8")
+    assert "PRIVATE" not in stored
+    assert "********" in stored
+
+
+def test_execute_interactive_exports_dry_run_and_applied_reports(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class FakeExecutor:
+        def execute(self, _plan: CommandPlan, **kwargs: Any) -> ExecutionReport:
+            return _report(ResultStatus.PLANNED if kwargs["dry_run"] else ResultStatus.APPLIED)
+
+    monkeypatch.setattr(cli, "_yes", lambda _: True)
+    monkeypatch.setattr(cli, "_confirm", lambda *_args, **_kwargs: True)
+    cli._execute_interactive(
+        FakeExecutor(),  # type: ignore[arg-type]
+        CommandPlan("NTP", "ntp", ("ntp server 192.0.2.20",)),
+        reports_directory=tmp_path,
+    )
+    assert len(list(tmp_path.glob("ejecucion_*.json"))) == 2
+    assert len(list(tmp_path.glob("ejecucion_*.csv"))) == 2
+
+
 def test_collect_service_data_and_show_facts(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -99,6 +137,58 @@ def test_collect_service_data_and_show_facts(
     cli._show_facts(_facts(warnings=True))
     output = capsys.readouterr().out
     assert "LAB" in output and "Consultas no disponibles" in output
+
+
+def test_security_templates_require_safe_inputs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    plans: list[CommandPlan] = []
+    store = DraftStore(tmp_path / "drafts.json")
+    monkeypatch.setattr(cli, "_execute_with_draft", lambda _executor, plan, *_args: plans.append(plan))
+
+    answers = iter(["MONITOR", "netops"])
+    passwords = iter(["AuthSecret123", "PrivSecret123"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    monkeypatch.setattr("getpass.getpass", lambda _: next(passwords))
+    cli._apply_snmpv3_template(object(), store, tmp_path)  # type: ignore[arg-type]
+    assert plans[-1].service == "snmpv3"
+
+    facts = _facts()
+    facts.running_config = "username rescue privilege 15 secret 9 hash\n"
+    answers = iter(["rescue", "CONSOLA_LISTA"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    cli._apply_aaa_local_template(object(), facts, store, tmp_path)  # type: ignore[arg-type]
+    assert plans[-1].service == "aaa_local"
+
+
+def test_aaa_template_cancels_without_console_confirmation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    answers = iter(["rescue", "no"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    cli._apply_aaa_local_template(object(), _facts(), DraftStore(tmp_path / "drafts.json"), tmp_path)  # type: ignore[arg-type]
+    assert "AAA cancelado" in capsys.readouterr().out
+
+
+def test_configuration_baseline_save_and_drift(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = _paths(tmp_path)
+    facts = _facts()
+    facts.running_config = "hostname LAB\nusername admin secret SuperSecret\n"
+    cli._save_configuration_baseline(facts, paths)
+    facts.running_config += "ntp server 192.0.2.10\n"
+    cli._show_configuration_drift(facts, paths)
+    output = capsys.readouterr().out
+    assert "SuperSecret" not in output
+    assert "+ntp server 192.0.2.10" in output
+
+
+def test_basic_hardening_prepares_a_plan_without_changing_vty(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    plans: list[CommandPlan] = []
+    monkeypatch.setattr(cli, "_execute_with_draft", lambda _executor, plan, *_args: plans.append(plan))
+    cli._apply_basic_hardening(object(), _facts(), DraftStore(tmp_path / "drafts.json"), tmp_path)  # type: ignore[arg-type]
+    assert plans[0].service == "basic_hardening"
 
 
 def test_service_menu_invalid_then_validation_error(
@@ -331,7 +421,9 @@ def test_device_session_all_menu_actions(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
     paths = _paths(tmp_path)
     audit = AuditLogger(paths.logs)
-    answers = iter(["1", "2", "3", "4", "5", "R1", "lab.local", "admin", "2048", "6", "7", "0"])
+    answers = iter(
+        ["1", "2", "3", "4", "5", "R1", "lab.local", "admin", "2048", "6", "7", "", "0"]
+    )
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     monkeypatch.setattr("getpass.getpass", lambda _: "Password123")
     monkeypatch.setattr(cli, "discover_device", lambda _: _facts())
@@ -427,12 +519,39 @@ def test_inventory_menu_creates_lists_and_removes_a_profile(
 ) -> None:
     paths = _paths(tmp_path)
     audit = AuditLogger(paths.logs)
-    answers = iter(["2", "Laboratorio", "1", "router", "192.0.2.10", "admin", "1", "4", "1", "0"])
+    answers = iter(["2", "Laboratorio", "1", "router", "192.0.2.10", "admin", "", "1", "4", "1", "0"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     cli._inventory_menu(paths, audit)
     audit.close()
     saved = json.loads((paths.root / "inventory.json").read_text(encoding="utf-8"))
     assert saved["profiles"] == []
+
+
+def test_draft_menu_lists_views_and_removes_a_draft(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    paths = _paths(tmp_path)
+    store = DraftStore(paths.root / "drafts.json")
+    store.add_plan(CommandPlan("NTP", "ntp", ("ntp server 192.0.2.20",)))
+    answers = iter(["1", "2", "1", "3", "1", "0"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    cli._draft_menu(paths)
+    assert not store.list_drafts()
+    assert "ntp server 192.0.2.20" in capsys.readouterr().out
+
+
+def test_compare_configuration_file_redacts_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    proposed = tmp_path / "proposed.cfg"
+    proposed.write_text("hostname R2\nenable secret NEW", encoding="utf-8")
+    facts = _facts()
+    facts.running_config = "hostname R1\nenable secret OLD"
+    monkeypatch.setattr("builtins.input", lambda _: str(proposed))
+    cli._compare_configuration_file(facts)
+    output = capsys.readouterr().out
+    assert "hostname R1" in output and "hostname R2" in output
+    assert "OLD" not in output and "NEW" not in output
 
 
 def test_entrypoint_calls_sys_exit(monkeypatch: pytest.MonkeyPatch) -> None:

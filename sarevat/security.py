@@ -23,6 +23,11 @@ _SENSITIVE_LINE_PATTERNS = (
     re.compile(r"(?i)(\busername\s+\S+?[^\r\n\"]*?\s(?:secret|password)\s+)(?:\d+\s+)?[^\s\"\\]+"),
     re.compile(r"(?i)(\benable\s+(?:secret|password)\s+)(?:\d+\s+)?[^\s\"\\]+"),
     re.compile(r"(?i)(\bsnmp-server\s+community\s+)[^\s\"\\]+"),
+    re.compile(
+        r"(?i)(\bsnmp-server\s+user\s+\S+\s+\S+\s+v3\s+auth\s+\S+\s+)\S+"
+        r"(\s+priv\s+(?:aes(?:\s+128)?|des)\s+)\S+"
+    ),
+    re.compile(r"(?i)(\bcommunity\s+)[^\s\"\\]+"),
     re.compile(r"(?i)(\b(?:key-string|pre-shared-key|community-string)\s+)[^\s\"\\]+"),
     re.compile(r"(?im)^(\s*password\s+)(?:\d+\s+)?\S+"),
 )
@@ -44,6 +49,7 @@ _DANGEROUS_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"^no\s+(?:aaa|username|router|vlan|interface)(?:\s|$)", re.I),
         "elimina configuracion critica",
     ),
+    (re.compile(r"^aaa\s+new-model(?:\s|$)", re.I), "cambia el control de acceso AAA"),
     (re.compile(r"^shutdown(?:\s|$)", re.I), "deshabilita una interfaz o servicio"),
 )
 
@@ -61,7 +67,8 @@ def redact_text(text: str) -> str:
     """Oculta secretos comunes sin destruir el resto del contexto del log."""
     redacted = text
     for pattern in _SENSITIVE_LINE_PATTERNS:
-        redacted = pattern.sub(r"\1********", redacted)
+        replacement = r"\1********\2********" if pattern.groups >= 2 else r"\1********"
+        redacted = pattern.sub(replacement, redacted)
     return redacted
 
 

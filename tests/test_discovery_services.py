@@ -5,8 +5,16 @@ from typing import ClassVar
 import pytest
 
 from sarevat.cisco.discovery import discover_device, parse_ip_interfaces
-from sarevat.cisco.services import SERVICE_CATALOG, build_service_plan, validate_plan_conflicts
+from sarevat.cisco.services import (
+    SERVICE_CATALOG,
+    build_aaa_local_plan,
+    build_basic_hardening_plan,
+    build_service_plan,
+    build_snmpv3_plan,
+    validate_plan_conflicts,
+)
 from sarevat.models import DeviceFacts, DeviceKind, InterfaceState
+from sarevat.security import redact_command
 from sarevat.validators import ValidationError
 
 
@@ -168,3 +176,45 @@ def test_semantic_conflicts_and_invalid_nat() -> None:
             facts,
             DeviceKind.ROUTER,
         )
+
+
+def test_observability_template_has_safe_commands_and_validates_ipv4() -> None:
+    from sarevat.cisco.services import build_observability_template
+
+    plan = build_observability_template("192.0.2.10", "192.0.2.20")
+    assert plan.service == "observability_template"
+    assert "ntp server 192.0.2.10" in plan.commands
+    assert "logging host 192.0.2.20" in plan.commands
+    with pytest.raises(ValidationError):
+        build_observability_template("bad", "192.0.2.20")
+
+
+def test_snmpv3_plan_preserves_existing_monitoring_and_redacts_keys() -> None:
+    plan = build_snmpv3_plan("MONITOR", "netops", "AuthSecret123", "PrivSecret123")
+    assert plan.prechecks == ("show snmp user",)
+    assert plan.warnings == ("No se eliminan comunidades ni usuarios SNMP existentes.",)
+    preview = redact_command(plan.commands[1])
+    assert "AuthSecret123" not in preview
+    assert "PrivSecret123" not in preview
+
+
+def test_aaa_local_requires_existing_user_and_console_recovery() -> None:
+    facts = _facts()
+    facts.running_config += "username rescue privilege 15 secret 9 hash\n"
+    plan = build_aaa_local_plan("rescue", facts, True)
+    assert plan.commands == ("aaa new-model", "aaa authentication login default local")
+    assert plan.postcheck_expectations
+    with pytest.raises(ValidationError, match="consola"):
+        build_aaa_local_plan("rescue", facts, False)
+    with pytest.raises(ValidationError, match="no existe"):
+        build_aaa_local_plan("missing", facts, True)
+
+
+def test_basic_hardening_only_adds_missing_low_risk_controls() -> None:
+    facts = _facts()
+    plan = build_basic_hardening_plan(facts)
+    assert plan.commands == ("ip ssh version 2", "service password-encryption")
+    assert "líneas VTY" in plan.warnings[0]
+    facts.running_config += "ip ssh version 2\nservice password-encryption\n"
+    with pytest.raises(ValidationError, match="ya están"):
+        build_basic_hardening_plan(facts)

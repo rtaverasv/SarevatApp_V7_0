@@ -6,7 +6,9 @@ from typing import Any
 import pytest
 
 from sarevat.cli import AppPaths, _connect
+from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.logging_utils import AuditLogger
+from sarevat.models import DeviceKind
 
 
 class FakeCiscoConnection:
@@ -89,3 +91,27 @@ def test_serial_flow_builds_netmiko_serial_settings(monkeypatch: pytest.MonkeyPa
     )
     assert captured["device_type"] == "cisco_ios_serial"
     assert captured["serial_settings"] == {"port": "COM99", "baudrate": 9600}
+
+
+def test_saved_profile_reuses_connection_data_and_updates_inventory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict[str, Any] = {}
+    paths = AppPaths.create(tmp_path / "runtime")
+    store = InventoryStore(paths.root / "inventory.json")
+    profile = ConnectionProfile.create_ssh("Lab", "192.0.2.10", "admin", DeviceKind.ROUTER)
+    store.add(profile)
+    monkeypatch.setattr("builtins.input", lambda _="": "0")
+    passwords = iter(["PASSWORD", "ENABLE"])
+    monkeypatch.setattr("getpass.getpass", lambda _="": next(passwords))
+    monkeypatch.setattr(
+        "sarevat.cli.ConnectHandler",
+        lambda **params: captured.update(params) or FakeCiscoConnection(),
+    )
+    audit = AuditLogger(paths.logs)
+    _connect(paths, audit, profile=profile, inventory=store)
+    audit.close()
+    updated = store.list_profiles()[0]
+    assert captured["host"] == "192.0.2.10"
+    assert updated.model == "C8000V"
+    assert updated.last_seen_at

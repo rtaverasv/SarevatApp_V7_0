@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from sarevat.drafts import DraftStore, configuration_diff
+import json
+
+import pytest
+
+from sarevat.drafts import DRAFT_SCHEMA_VERSION, DraftStore, configuration_diff
 from sarevat.models import CommandPlan
 
 
@@ -22,3 +26,13 @@ def test_configuration_diff_redacts_and_marks_changes() -> None:
     assert "+hostname R2" in diff
     assert "OLD" not in diff and "NEW" not in diff
     assert "********" in diff
+
+
+def test_draft_store_rejects_invalid_schema_and_json(tmp_path) -> None:
+    path = tmp_path / "drafts.json"
+    path.write_text(json.dumps({"schema_version": DRAFT_SCHEMA_VERSION + 1, "drafts": []}), encoding="utf-8")
+    with pytest.raises(ValueError, match="versión"):
+        DraftStore(path).list_drafts()
+    path.write_text("no es json", encoding="utf-8")
+    with pytest.raises(ValueError, match="leer"):
+        DraftStore(path).list_drafts()

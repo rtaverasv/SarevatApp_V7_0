@@ -15,21 +15,72 @@ Cada entrada debe incluir:
 
 ## Historial
 
-### 2026-08-27 20:13:10 -04:00 — Fase 3: inventario, perfiles y borradores seguros
+### 2026-08-27 21:21:14 -04:00 — Fase 5: organización inicial por grupos
+
+- **Cambio:** se añadieron grupos opcionales a los perfiles de inventario. Un
+  equipo puede pertenecer a varios grupos, que se normalizan y se pueden
+  consultar desde el menú de inventario. Esta entrega no conecta ni aplica
+  configuraciones a varios equipos.
+- **Motivo:** preparar una organización clara y segura antes de incorporar
+  cualquier operación por lotes.
+- **Archivos afectados:** `sarevat/inventory.py`, `sarevat/cli.py`,
+  `tests/test_inventory.py`, `tests/test_cli_round2.py`, `README.md` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `151 passed`; cobertura total de 1,968 líneas ejecutables y
+  93% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-27 21:19:10 -04:00 — Fase 4: revisión y plantillas seguras
+
+- **Cambio:** se añadió una auditoría de seguridad que revisa SSH v2, NTP,
+  syslog, SNMPv3, AAA y cifrado básico de contraseñas sin enviar comandos de
+  configuración. La sesión permite comparar la configuración descubierta con
+  un archivo local, y los resultados de planes se exportan como JSON y CSV con
+  secretos redactados. Se añadió una plantilla conjunta de NTP y syslog con el
+  mismo dry-run, confirmación y rollback del resto de la aplicación. Se
+  incorporaron plantillas para SNMPv3 y AAA local: SNMPv3 no elimina usuarios
+  ni comunidades existentes y sus claves se piden ocultas; AAA exige que el
+  usuario local ya exista, la confirmación literal `CONSOLA_LISTA`, dry-run y
+  una segunda confirmación de alto impacto antes de enviar comandos. Se añadió
+  una referencia local redactada para detectar cambios de configuración sin
+  remediarlos automáticamente, y un plan separado de endurecimiento básico que
+  solo incorpora SSH v2 y cifrado de contraseñas cuando faltan, sin modificar
+  VTY, usuarios, AAA, SNMP ni claves RSA.
+- **Motivo:** hacer visible el estado de seguridad y los cambios propuestos sin
+  modificar equipos ni persistir credenciales, evitando que una configuración
+  de AAA o SNMPv3 afecte innecesariamente el acceso o el monitoreo existente.
+- **Archivos afectados:** `sarevat/compliance.py`, `sarevat/reporting.py`,
+  `sarevat/security.py`, `sarevat/cisco/services.py`, `sarevat/cli.py`,
+  `sarevat/baselines.py`,
+  `tests/test_compliance.py`, `tests/test_reporting.py`,
+  `tests/test_discovery_services.py`, `tests/test_cli_round2.py`,
+  `tests/test_validators_security.py`, `tests/test_baselines.py`, `README.md`
+  y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `150 passed`; cobertura total de 1,939 líneas ejecutables y
+  93% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-27 20:27:41 -04:00 — Fase 3: inventario, perfiles, comparación y reportes
 
 - **Cambio:** se añadió un inventario JSON con esquema versionado, perfiles SSH
   y serial sin secretos, actualización de modelo/versión/serial tras el
   descubrimiento y un menú sencillo para crear, consultar, conectar y eliminar
   perfiles. Se añadieron borradores redactados de planes y una utilidad para
-  comparar configuraciones sin exponer secretos. Se actualizaron las pruebas y
-  la guía de uso.
+  comparar configuraciones sin exponer secretos. Se añadieron comparación de
+  una configuración descubierta con un archivo local y reportes JSON/CSV para
+  dry-run y aplicación. Las credenciales continúan solicitándose en cada
+  conexión, sin persistirlas. Se mejoró el mensaje para una IPv4 inválida en un
+  perfil y se ampliaron las pruebas de inventario, borradores, menús, conexión
+  reutilizable y reportes.
 - **Motivo:** reducir la repetición de datos de conexión sin almacenar
   contraseñas ni hacer más complejo el flujo habitual de la aplicación.
 - **Archivos afectados:** `sarevat/inventory.py`, `sarevat/drafts.py`,
-  `sarevat/cli.py`, `tests/test_inventory.py`, `tests/test_drafts.py`,
-  `tests/test_cli_round2.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
-- **Verificación:** `125 passed`; cobertura total de 1,655 líneas ejecutables y
-  92% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  `sarevat/reporting.py`, `sarevat/security.py`, `sarevat/cli.py`,
+  `tests/test_inventory.py`, `tests/test_drafts.py`, `tests/test_reporting.py`,
+  `tests/test_cli_connections.py`, `tests/test_cli_round2.py`, `README.md` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `136 passed`; cobertura total de 1,725 líneas ejecutables y
+  95% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
   errores. No se realizaron conexiones a equipos Cisco reales.
 
 ### 2026-08-27 16:12:59 -04:00 — Entorno de validación y ajuste de rollback
