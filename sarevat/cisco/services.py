@@ -535,6 +535,30 @@ def build_observability_template(ntp_server: str, syslog_server: str) -> Command
     )
 
 
+def build_site_observability_plan(role: str, ntp_server: str, syslog_server: str) -> CommandPlan:
+    """Aplica una base de observabilidad conservadora según el tipo de sitio."""
+    normalized_role = role.strip().casefold() or "sucursal"
+    role_commands = {
+        "sucursal": (),
+        "nucleo": ("service timestamps debug datetime msec",),
+    }
+    if normalized_role not in role_commands:
+        raise ValidationError("El sitio debe ser sucursal o nucleo.")
+    base = build_observability_template(ntp_server, syslog_server)
+    label = "Sucursal" if normalized_role == "sucursal" else "Nucleo"
+    return CommandPlan(
+        name=f"{label}: NTP y syslog",
+        service="site_observability",
+        commands=(*base.commands, *role_commands[normalized_role]),
+        prechecks=base.prechecks,
+        postchecks=base.postchecks,
+        warnings=(
+            "No modifica VTY, usuarios, AAA, SNMP ni credenciales.",
+            *base.warnings,
+        ),
+    )
+
+
 def build_basic_hardening_plan(facts: DeviceFacts) -> CommandPlan:
     """Corrige solo controles básicos ausentes sin alterar las líneas VTY."""
     current = facts.running_config.casefold()

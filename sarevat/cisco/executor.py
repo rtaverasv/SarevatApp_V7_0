@@ -13,6 +13,7 @@ from typing import Any, Protocol
 
 from netmiko.exceptions import ConfigInvalidException
 
+from sarevat.backup_crypto import BackupCipher
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, CommandResult, ExecutionReport, ResultStatus
 from sarevat.security import (
@@ -42,10 +43,12 @@ class CiscoExecutor:
         *,
         audit: AuditLogger,
         backup_directory: Path,
+        backup_cipher: BackupCipher | None = None,
     ) -> None:
         self.connection = connection
         self.audit = audit
         self.backup_directory = backup_directory.resolve()
+        self.backup_cipher = backup_cipher
 
     def _run_show(self, command: str) -> str:
         output = str(self.connection.send_command(command))
@@ -65,8 +68,13 @@ class CiscoExecutor:
         self.backup_directory.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", plan_name)[:60]
-        path = self.backup_directory / f"{safe_name}_{stamp}_redacted.cfg"
-        path.write_text(redact_text(running_config), encoding="utf-8")
+        redacted = redact_text(running_config)
+        if self.backup_cipher:
+            path = self.backup_directory / f"{safe_name}_{stamp}_redacted.cfg.enc"
+            path.write_bytes(self.backup_cipher.encrypt(redacted))
+        else:
+            path = self.backup_directory / f"{safe_name}_{stamp}_redacted.cfg"
+            path.write_text(redacted, encoding="utf-8")
         with suppress(OSError):
             os.chmod(path, 0o600)
         return path

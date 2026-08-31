@@ -15,6 +15,87 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-31 18:37:31 -04:00 — VLSM: flujo guiado por cantidad de subredes
+
+- **Cambio:** tras introducir la red base, VLSM pregunta si se trabajará con
+  subredes. Si la respuesta es sí, solicita la cantidad y cada nombre; si es
+  no, calcula inmediatamente hosts, rango, gateway y broadcast de la red base.
+  Se eliminó el cierre por campo vacío y la necesidad de escribir comandos como
+  `salir` en campos numéricos.
+- **Motivo:** hacer la navegación más clara y evitar errores de entrada durante
+  el cálculo VLSM y la preparación de interfaces.
+- **Archivos afectados:** `sarevat/cli.py`, `tests/test_cli_round2.py` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `155 passed`; cobertura total de 2,098 líneas ejecutables y
+  91% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-31 18:11:03 -04:00 — VLSM: cálculo automático y validación inmediata
+
+- **Cambio:** VLSM asigna gateway automáticamente a las LAN y no lo reserva en
+  enlaces punto a punto ni loopbacks. Las loopbacks exigen una dirección y usan
+  `/32`; los enlaces punto a punto admiten hasta dos y usan `/31`. Cada subred
+  se comprueba contra la red base antes de aceptar la siguiente.
+- **Motivo:** evitar errores manuales de gateway, tipo de enlace y capacidad al
+  planificar o preparar interfaces para equipos Cisco.
+- **Archivos afectados:** `sarevat/vlsm.py`, `sarevat/cli.py`,
+  `tests/test_cli_round2.py`, `tests/test_vlsm_validators_edges.py` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `155 passed`; cobertura total de 2,072 líneas ejecutables y
+  92% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-31 18:00:05 -04:00 — VLSM: etiquetas más claras
+
+- **Cambio:** se reemplazaron las etiquetas visibles “Red base CIDR” y
+  “Exclusiones CIDR” por “Introducir Red Base” y “Excluir IP”.
+- **Motivo:** reducir terminología técnica en el flujo VLSM sin alterar la
+  validación IPv4 ni el formato de entrada esperado.
+- **Archivos afectados:** `sarevat/cli.py` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `35 passed` en pruebas de VLSM y navegación; Ruff y
+  `git diff --check` finalizaron sin errores. No se realizaron conexiones Cisco
+  reales.
+
+### 2026-08-31 17:44:00 -04:00 — Fase 5: preparación gradual de lotes
+
+- **Cambio:** se añadió la preparación de un lote por grupo con límite de
+  concurrencia, primer grupo de prueba y equipos restantes. Esta vista no
+  conecta ni aplica configuraciones.
+- **Motivo:** permitir revisar el despliegue gradual antes de habilitar
+  operaciones masivas sobre equipos reales.
+- **Archivos afectados:** `sarevat/batches.py`, `sarevat/cli.py`,
+  `tests/test_batches.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** las pruebas específicas de lotes, inventario y CLI pasaron
+  (`39 passed`); Ruff finalizó sin errores. Falta la batería completa al cerrar
+  el bloque de la Fase 5. No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 17:37:59 -04:00 — Fase 6: respaldos cifrados por frase temporal
+
+- **Cambio:** los respaldos redactados se cifran con AES-GCM y una clave derivada
+  de la frase que el operador introduce al aplicar un plan. La frase no se
+  persiste; el archivo detecta una frase incorrecta o una alteración.
+- **Motivo:** proteger los respaldos locales sin almacenar contraseñas, claves
+  ni frases secretas dentro de la aplicación.
+- **Archivos afectados:** `sarevat/backup_crypto.py`,
+  `sarevat/cisco/executor.py`, `sarevat/cli.py`, `requirements.txt`,
+  `tests/test_backup_crypto.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `154 passed`; cobertura total de 2,024 líneas ejecutables y
+  92% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-28 20:13:52 -04:00 — Fase 4: plantilla de observabilidad por sitio
+
+- **Cambio:** la plantilla de NTP y syslog ahora permite seleccionar sucursal o
+  núcleo. El perfil de núcleo añade únicamente marcas de tiempo de depuración;
+  ambos perfiles conservan dry-run, confirmación, checkpoint y rollback.
+- **Motivo:** completar plantillas por sitio sin modificar VTY, usuarios, AAA,
+  SNMP, claves o credenciales.
+- **Archivos afectados:** `sarevat/cisco/services.py`, `sarevat/cli.py`,
+  `tests/test_discovery_services.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `152 passed`; cobertura total de 1,977 líneas ejecutables y
+  93% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
 ### 2026-08-28 06:37:05 -04:00 — Preparación del piloto Cisco autorizado
 
 - **Cambio:** se añadió una preflight local de un solo comando y una guía para

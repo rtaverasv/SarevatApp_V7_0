@@ -189,6 +189,16 @@ def test_observability_template_has_safe_commands_and_validates_ipv4() -> None:
         build_observability_template("bad", "192.0.2.20")
 
 
+def test_site_observability_plan_keeps_access_controls_untouched() -> None:
+    from sarevat.cisco.services import build_site_observability_plan
+
+    plan = build_site_observability_plan("nucleo", "192.0.2.10", "192.0.2.20")
+    assert "service timestamps debug datetime msec" in plan.commands
+    assert "AAA" in plan.warnings[0]
+    with pytest.raises(ValidationError, match="sucursal o nucleo"):
+        build_site_observability_plan("datacenter", "192.0.2.10", "192.0.2.20")
+
+
 def test_snmpv3_plan_preserves_existing_monitoring_and_redacts_keys() -> None:
     plan = build_snmpv3_plan("MONITOR", "netops", "AuthSecret123", "PrivSecret123")
     assert plan.prechecks == ("show snmp user",)

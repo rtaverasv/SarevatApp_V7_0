@@ -1,4 +1,4 @@
 netmiko==4.7.0
 colorama==0.4.6
 pyserial==3.5
-
+cryptography==50.0.1
