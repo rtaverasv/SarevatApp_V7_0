@@ -15,6 +15,21 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-31 18:45:00 -04:00 — Fase 5: motor de despliegue gradual
+
+- **Cambio:** se añadió un motor de lotes con etapa inicial, concurrencia
+  limitada, ventana de mantenimiento y pausa de equipos pendientes ante un
+  fallo. Se añadió historial local filtrable por grupo y una opción para verlo
+  desde Inventario. No conecta equipos por sí solo.
+- **Motivo:** establecer las salvaguardas verificables antes de integrar la
+  ejecución real de configuraciones por grupo.
+- **Archivos afectados:** `sarevat/batches.py`, `sarevat/cli.py`,
+  `tests/test_batches.py` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `157 passed`; cobertura total de 2,174 líneas ejecutables y
+  90% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones Cisco reales.
+  No se realizaron conexiones Cisco reales.
+
 ### 2026-08-31 18:37:31 -04:00 — VLSM: flujo guiado por cantidad de subredes
 
 - **Cambio:** tras introducir la red base, VLSM pregunta si se trabajará con

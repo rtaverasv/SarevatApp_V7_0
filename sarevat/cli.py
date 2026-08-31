@@ -16,7 +16,7 @@ from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutExc
 from sarevat import __version__
 from sarevat.backup_crypto import BackupCipher
 from sarevat.baselines import BaselineStore, ConfigurationBaseline, compare_with_baseline
-from sarevat.batches import BatchPreview
+from sarevat.batches import BatchHistoryStore, BatchPreview
 from sarevat.cisco.discovery import discover_device
 from sarevat.cisco.executor import CiscoExecutor
 from sarevat.cisco.services import (
@@ -744,6 +744,7 @@ def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
         print("  5) Ver borradores seguros")
         print("  6) Ver equipos de un grupo")
         print("  7) Preparar lote gradual por grupo (sin ejecutar)")
+        print("  8) Ver historial de lotes")
         print("  0) Volver")
         choice = input("> ").strip()
         try:
@@ -782,6 +783,13 @@ def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
                 if preview.remaining:
                     print(f"Despues: {', '.join(item.name for item in preview.remaining)}")
                 print(Fore.YELLOW + "El lote se pausara ante un fallo cuando se habilite su ejecucion.")
+            elif choice == "8":
+                group = input("Grupo (vacio para ver todos): ").strip() or None
+                records = BatchHistoryStore(paths.root / "batch_history.json").list(group)
+                if not records:
+                    print(Fore.YELLOW + "Aun no hay lotes ejecutados.")
+                for record in records:
+                    print(f"{record['timestamp']} | {record['group']} | pausado: {record['paused']}")
             else:
                 print(Fore.YELLOW + "Opcion invalida.")
         except ValueError as exc:
