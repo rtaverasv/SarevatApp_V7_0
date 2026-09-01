@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-01 06:44:13 -04:00
+
+- Se actualizó el roadmap para reflejar la versión integrada en `main`: GUI Alpha funcional, conexión SSH/serial, VLSM guiado, inventario, planes de seguridad, respaldos cifrados, reportes, lotes preparados, CI y las 163 pruebas locales.
+- Se distinguieron explícitamente las fases completadas localmente de las pendientes de laboratorio. Se priorizó la certificación de SSH, serial, dry-run, checkpoint, rollback, AAA y SNMPv3 antes de declarar soporte real, habilitar lotes reales o retirar la etiqueta Alpha de la GUI.
+- Se añadieron el criterio de salida para una GUI estable y el orden recomendado para laboratorio, matriz de compatibilidad y futuro empaquetado `.exe`.
+- Archivos afectados: `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: validación completa aprobada: `163 passed`, Ruff, Bandit, `pip check` y `git diff --check` sin errores. No se realizaron conexiones Cisco reales.
+
 ### 2026-08-31 22:57:57 -04:00
 
 - Se integró la documentación más reciente de `main` en `Mods` para resolver el conflicto de la Pull Request, conservando tanto la guía de uso `GUIA_DE_USO.md` como todas las entradas de historial existentes en ambas ramas.
