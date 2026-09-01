@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-31 22:57:57 -04:00
+
+- Se integró la documentación más reciente de `main` en `Mods` para resolver el conflicto de la Pull Request, conservando tanto la guía de uso `GUIA_DE_USO.md` como todas las entradas de historial existentes en ambas ramas.
+- Motivo: dejar la comparación `Mods` hacia `main` fusionable sin perder el registro de cambios ni la guía que ya existían en la versión principal.
+- Archivos afectados: `README.md`, `GUIA_DE_USO.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: validación completa aprobada: `163 passed`, Ruff, Bandit, `pip check` y `git diff --check` sin errores. No se realizaron conexiones Cisco reales.
+
 ### 2026-08-31 22:36:45 -04:00
 
 - Se corrigió la pantalla de conexión de la GUI alpha. Cuando se abría sin haber seleccionado un perfil, el formulario intentaba obtener un puerto serial de un perfil inexistente; la excepción detenía el dibujo de todos los campos y dejaba visible solo el encabezado.
@@ -149,6 +156,18 @@ Cada entrada debe incluir:
 - **Verificación:** `152 passed`; cobertura total de 1,977 líneas ejecutables y
   93% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
   errores. No se realizaron conexiones a equipos Cisco reales.
+### 2026-08-28 07:00:54 -04:00 — Guía paso a paso de uso y navegación
+
+- **Cambio:** se añadió una guía práctica en español que explica el inicio,
+  menús, navegación, conexión SSH/serial, aplicación segura de planes,
+  inventario, VLSM, escáner, AAA, SNMPv3 y ubicación de los resultados.
+- **Motivo:** facilitar el uso de la aplicación durante el piloto y reducir
+  errores de navegación o de orden operativo.
+- **Archivos afectados:** `GUIA_DE_USO.md`, `README.md` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** se contrastaron las rutas descritas con los menús y flujos
+  actuales de `sarevat/cli.py`. No se ejecutaron pruebas de código porque el
+  cambio solo incorpora documentación.
 
 ### 2026-08-28 06:37:05 -04:00 — Preparación del piloto Cisco autorizado
 
