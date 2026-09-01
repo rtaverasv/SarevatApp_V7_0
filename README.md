@@ -34,6 +34,40 @@ También puedes instalar el comando `sarevat` con `python -m pip install .` y
 ejecutarlo desde la terminal. El menú y las protecciones de seguridad son los
 mismos en ambas formas de inicio.
 
+## Interfaz gráfica alpha
+
+La interfaz gráfica es opcional y no reemplaza PowerShell. Para abrirla:
+
+```powershell
+.\.venv\Scripts\python.exe .\SarevatApp_GUI_alpha.py
+```
+
+La alpha conserva el orden del menú de PowerShell y permite usar sus funciones
+desde una ventana: conexión y descubrimiento, VLSM IPv4, escaneo autorizado,
+inventario, perfiles y las catorce herramientas del equipo conectado. Al
+seleccionar consola serial, pide puerto y baudrate; si la línea de consola usa
+autenticación, las credenciales se solicitan solo para esa conexión.
+
+El escaneo primero se prepara con la confirmación `AUTORIZO` y solo inicia tras
+una segunda confirmación. Inventario y perfiles conserva las ocho opciones de
+la versión de PowerShell, incluyendo borradores, grupos, preparación de lotes
+sin ejecución e historial.
+
+Al abrir **Herramientas del equipo conectado**, los planes de servicios,
+IPv4 de interfaz, configuración inicial, NTP/syslog, SNMPv3, AAA y
+endurecimiento siguen el mismo flujo seguro: vista previa redactada, dry-run,
+confirmación, frase local para cifrar el respaldo, checkpoint, postchecks y
+rollback opcional. AAA exige también `CONSOLA_LISTA` y `AAA_APLICAR`.
+La consola libre, `write memory`, comparación, revisión, referencias y cambios
+desde la referencia también están disponibles. VLSM puede preparar la IPv4 de
+cada interfaz calculada, una por una, para que la revises antes de aplicarla.
+
+La GUI es funcional, pero sigue marcada como alpha hasta validarla en un
+laboratorio o un equipo Cisco autorizado. PowerShell se conserva sin cambios
+como alternativa de operación; ambas interfaces usan los mismos validadores y
+motores de planes. La opción de lote, igual que en PowerShell, solo prepara el
+orden: no conecta ni aplica cambios a varios equipos.
+
 ## Inventario y perfiles
 
 La opción **4) Inventario y perfiles** permite guardar el nombre del equipo,

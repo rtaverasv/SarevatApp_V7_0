@@ -542,6 +542,19 @@ def _device_session(
             print(Fore.YELLOW + "Opcion invalida.")
 
 
+def _serial_authentication_params() -> dict[str, str]:
+    """Solicita credenciales de consola solo para la conexion actual."""
+    if not _yes("La consola solicita autenticacion"):
+        return {}
+    username = input("Usuario de consola (Enter si solo pide password): ").strip()
+    params = {
+        "username": username,
+        "password": getpass.getpass("Password de consola: "),
+        "secret": getpass.getpass("Enable secret (Enter si no aplica): "),
+    }
+    return params
+
+
 def _connect(
     paths: AppPaths,
     audit: AuditLogger,
@@ -566,6 +579,7 @@ def _connect(
                     "device_type": "cisco_ios_serial",
                     "serial_settings": {"port": profile.serial_port, "baudrate": profile.baudrate},
                 }
+                params.update(_serial_authentication_params())
         else:
             print("  1) SSH")
             print("  2) Consola serial")
@@ -593,6 +607,7 @@ def _connect(
                     "device_type": "cisco_ios_serial",
                     "serial_settings": {"port": port, "baudrate": baudrate},
                 }
+                params.update(_serial_authentication_params())
             else:
                 print(Fore.YELLOW + "Modo invalido.")
                 return

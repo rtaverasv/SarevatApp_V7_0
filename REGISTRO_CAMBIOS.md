@@ -15,6 +15,45 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-31 22:36:45 -04:00
+
+- Se corrigió la pantalla de conexión de la GUI alpha. Cuando se abría sin haber seleccionado un perfil, el formulario intentaba obtener un puerto serial de un perfil inexistente; la excepción detenía el dibujo de todos los campos y dejaba visible solo el encabezado.
+- Se aisló la obtención del objetivo de conexión en `profile_connection_target`, que devuelve vacío sin perfil y selecciona correctamente IPv4 o puerto serial cuando sí existe. Se añadió una prueba para los tres casos, evitando que una pantalla nueva vuelva a depender de un perfil guardado.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación, Ruff, Bandit y pruebas específicas de GUI aprobadas (`5 passed`). La verificación visual automática no está disponible en este entorno; se requiere reiniciar la ventana ya abierta para cargar el código corregido. No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 21:24:30 -04:00
+
+- Se completó la operación de la GUI alpha sobre equipos conectados sin retirar PowerShell: tras descubrir el equipo muestra las catorce herramientas ya disponibles en la consola, incluyendo servicios, IPv4 por interfaz, consola libre, configuración inicial, guardado, comparación, revisión, NTP/syslog, SNMPv3, AAA, referencias y endurecimiento.
+- Los planes de configuración usan el mismo `CiscoExecutor` de la aplicación: vista previa con secretos ocultos, dry-run, respaldo cifrado con frase temporal, checkpoint, postchecks, reporte JSON/CSV y rollback opcional. Los planes peligrosos requieren una confirmación reforzada; AAA exige además `CONSOLA_LISTA` al preparar y `AAA_APLICAR` al aplicar, para proteger el acceso de recuperación.
+- Se añadieron controles de sesión para serializar comandos Netmiko, impedir una segunda conexión mientras hay una sesión abierta, cerrar y auditar correctamente la sesión, registrar la consola libre sin secretos y actualizar el inventario cuando se conecta mediante un perfil. La GUI mantiene las credenciales solo durante la conexión actual.
+- VLSM puede preparar una configuración por cada interfaz calculada, usando automáticamente la primera IPv4 utilizable, la máscara y el tipo de subred. El escáner incorpora DNS inverso, consulta opcional de la caché ARP y exportaciones con fecha para no sobrescribir resultados. Los perfiles permiten grupos y la preparación de lotes pide los mismos límites de concurrencia y prueba inicial que PowerShell; sigue sin ejecutar lotes, tal como la versión de consola.
+- Se actualizó la guía de la GUI para reflejar sus capacidades reales, sus confirmaciones y la condición alpha. PowerShell permanece intacto como alternativa operativa.
+- Archivos afectados: `sarevat/gui.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `162 passed` con cobertura, Ruff, Bandit, `pip check` y `git diff --check` aprobados mediante `scripts/validar_calidad.ps1`. No se realizaron conexiones a equipos Cisco reales; la certificación por modelo, IOS/IOS-XE y cableado serial sigue pendiente de laboratorio o hardware autorizado.
+
+### 2026-08-31 20:13:17 -04:00
+
+- Se añadió la interfaz gráfica opcional `SarevatApp_GUI_alpha.py` y el módulo `sarevat/gui.py`, sin cambiar el punto de entrada de PowerShell. La alpha conserva el orden del menú principal y ofrece conexión y descubrimiento en modo lectura, VLSM IPv4, escaneo autorizado e inventario de perfiles.
+- La conexión SSH valida IPv4 y solicita credenciales temporales. La conexión serial muestra puerto y baudrate; puede solicitar usuario, password y enable secret solo si la consola lo requiere. Ningún secreto se almacena en perfiles ni archivos de la aplicación.
+- Se ajustó la navegación y los formularios de la alpha: SSH y consola serial actualizan sus campos al cambiar de método; VLSM presenta primero Red Base, Excluir IP y la decisión de trabajar con subredes; el escaneo se prepara antes de pedir una segunda confirmación para iniciar; e Inventario muestra sus ocho opciones antes de abrir el detalle correspondiente.
+- Se corrigió la pantalla de conexión de la alpha: su contenedor usaba dos mecanismos de distribución incompatibles, lo que podía dejar los campos sin mostrarse. Ahora utiliza una distribución única y vuelve a presentar los campos SSH o serial según la selección.
+- Las configuraciones de IOS se mantienen exclusivamente en PowerShell durante la alpha. Se documentó el comando de inicio y ese límite en `README.md`.
+- Archivos afectados: `SarevatApp_GUI_alpha.py`, `sarevat/gui.py`, `tests/test_gui.py`, `pyproject.toml`, `README.md` y `REGISTRO_CAMBIOS.md`. Comprobaciones: 162 pruebas automatizadas aprobadas, compilación y calidad estática aprobadas. No se realizaron conexiones a equipos reales.
+
+### 2026-08-31 19:58:14 -04:00
+
+- Se añadió autenticación opcional para conexiones por consola serial. Si el equipo solicita acceso por la línea de consola, SarevatApp pregunta el usuario (solo si aplica), password y enable secret para esa conexión; no los guarda en perfiles, registros ni inventario.
+- Se actualizó la maqueta de interfaz: al seleccionar consola serial muestra Puerto serial y Baudrate en lugar de una IPv4, y se incorporó una flecha de retorno al menú principal en la parte superior de cada pantalla propuesta. En el menú principal la flecha no aparece, para no sugerir una salida o un retorno inexistente.
+- Se ajustaron las pruebas de conexión serial para confirmar tanto el acceso directo sin credenciales como el envío temporal de credenciales cuando el operador lo indica.
+- Archivos afectados: `sarevat/cli.py`, `tests/test_cli_connections.py`, `tests/test_cli_round2.py` y `work/gui-flujo-sarevat.html`. Comprobaciones: pruebas de conexión y menús, 34 aprobadas; suite completa, 158 aprobadas.
+
+### 2026-08-31 19:34:34 -04:00
+
+- Se añadió `work/gui-flujo-sarevat.html`, una maqueta interactiva de referencia para una futura interfaz gráfica. Mantiene el orden real del menú de PowerShell: conectar a equipo Cisco, planificar VLSM IPv4, escanear IPv4 e inventario y perfiles.
+- La pantalla de inicio evita datos ficticios; los equipos y grupos aparecen únicamente en Inventario y perfiles. La conexión muestra sus datos esenciales y aclara que las credenciales se piden al conectar, sin guardarlas.
+- Se comprobó que el archivo contiene marcado HTML literal, que los controles del menú actualizan su contenido localmente y que el árbol del repositorio no fue modificado fuera de esta maqueta y su registro. No se ejecutaron pruebas automatizadas: es una propuesta visual aislada que no forma parte de la aplicación ejecutable.
+
 ### 2026-08-31 18:45:00 -04:00 — Fase 5: motor de despliegue gradual
 
 - **Cambio:** se añadió un motor de lotes con etapa inicial, concurrencia

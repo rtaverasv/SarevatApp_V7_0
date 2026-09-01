@@ -471,7 +471,7 @@ def test_serial_connection_valid_parameters(monkeypatch: pytest.MonkeyPatch, tmp
         def __exit__(self, *_: object) -> None:
             pass
 
-    answers = iter(["2", "switch", "COM99", "9600"])
+    answers = iter(["2", "switch", "COM99", "9600", "no"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     monkeypatch.setattr(
         "sarevat.cli.ConnectHandler", lambda **kwargs: captured.update(kwargs) or Connection()
