@@ -14,7 +14,9 @@ from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutException
 
 from sarevat import __version__
+from sarevat.backup_crypto import BackupCipher
 from sarevat.baselines import BaselineStore, ConfigurationBaseline, compare_with_baseline
+from sarevat.batches import BatchHistoryStore, BatchPreview
 from sarevat.cisco.discovery import discover_device
 from sarevat.cisco.executor import CiscoExecutor
 from sarevat.cisco.services import (
@@ -23,8 +25,8 @@ from sarevat.cisco.services import (
     build_basic_hardening_plan,
     build_initial_setup_plan,
     build_interface_ip_plan,
-    build_observability_template,
     build_service_plan,
+    build_site_observability_plan,
     build_snmpv3_plan,
     service_is_configured,
 )
@@ -44,7 +46,13 @@ from sarevat.scanner import (
 )
 from sarevat.security import dangerous_reasons, find_ios_errors, redact_text
 from sarevat.validators import ValidationError, validate_ipv4, validate_ipv4_network
-from sarevat.vlsm import SubnetRequest, calculate_vlsm, export_plan_csv, export_plan_json
+from sarevat.vlsm import (
+    SubnetRequest,
+    automatic_gateway_policy,
+    calculate_vlsm,
+    export_plan_csv,
+    export_plan_json,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +121,13 @@ def _execute_interactive(
     _save_execution_reports(dry_report, reports_directory)
     if not _yes("¿Aplicar realmente este plan?"):
         return
+    if isinstance(executor, CiscoExecutor) and executor.backup_cipher is None:
+        try:
+            passphrase = getpass.getpass("Frase para cifrar respaldos (minimo 12 caracteres): ")
+            executor.backup_cipher = BackupCipher(passphrase)
+        except ValueError as exc:
+            print(Fore.YELLOW + f"Aplicacion cancelada: {exc}")
+            return
     report = executor.execute(
         plan,
         dry_run=False,
@@ -267,18 +282,26 @@ def _device_vlsm(
     draft_store: DraftStore | None = None,
     reports_directory: Path | None = None,
 ) -> None:
-    base = input(Fore.CYAN + "Red base CIDR: ").strip()
+    base = str(validate_ipv4_network(input(Fore.CYAN + "Introducir Red Base: ").strip()))
+    if not _yes("¿Trabajar con subredes?"):
+        _show_network_calculation(base)
+        return
+    count = int(input("Cantidad de subredes: ").strip())
+    if count < 1:
+        raise ValidationError("Indica al menos una subred.")
     requests: list[SubnetRequest] = []
-    selected_interfaces: list[str] = []
-    print("Indica interfaces y hosts. Deja la interfaz vacia para calcular.")
-    while True:
+    print("Indica cada interfaz y hosts. Gateway y loopback se calculan automaticamente.")
+    while len(requests) < count:
         interface = input(Fore.CYAN + "Interfaz: ").strip()
-        if not interface:
-            break
         hosts = int(input("Hosts: ").strip())
         kind = input("Tipo [lan/point_to_point/loopback] (lan): ").strip() or "lan"
-        selected_interfaces.append(interface)
-        requests.append(SubnetRequest(interface, hosts, kind=kind))
+        candidate = SubnetRequest(interface, hosts, kind=kind, gateway_policy=automatic_gateway_policy(kind))
+        try:
+            calculate_vlsm(base, [*requests, candidate])
+        except ValidationError as exc:
+            print(Fore.YELLOW + f"Corrige esta subred antes de continuar: {exc}")
+            continue
+        requests.append(candidate)
     plan = calculate_vlsm(base, requests)
     for allocation in plan.allocations:
         interface_plan = build_interface_ip_plan(
@@ -347,9 +370,10 @@ def _apply_observability_template(
     reports_directory: Path,
 ) -> None:
     try:
+        role = input("Sitio [sucursal/nucleo] (sucursal): ").strip() or "sucursal"
         ntp_server = input("Servidor NTP IPv4: ").strip()
         syslog_server = input("Servidor syslog IPv4: ").strip()
-        plan = build_observability_template(ntp_server, syslog_server)
+        plan = build_site_observability_plan(role, ntp_server, syslog_server)
         _execute_with_draft(executor, plan, draft_store, reports_directory)
     except ValidationError as exc:
         print(Fore.YELLOW + f"Plantilla cancelada: {exc}")
@@ -518,6 +542,19 @@ def _device_session(
             print(Fore.YELLOW + "Opcion invalida.")
 
 
+def _serial_authentication_params() -> dict[str, str]:
+    """Solicita credenciales de consola solo para la conexion actual."""
+    if not _yes("La consola solicita autenticacion"):
+        return {}
+    username = input("Usuario de consola (Enter si solo pide password): ").strip()
+    params = {
+        "username": username,
+        "password": getpass.getpass("Password de consola: "),
+        "secret": getpass.getpass("Enable secret (Enter si no aplica): "),
+    }
+    return params
+
+
 def _connect(
     paths: AppPaths,
     audit: AuditLogger,
@@ -542,6 +579,7 @@ def _connect(
                     "device_type": "cisco_ios_serial",
                     "serial_settings": {"port": profile.serial_port, "baudrate": profile.baudrate},
                 }
+                params.update(_serial_authentication_params())
         else:
             print("  1) SSH")
             print("  2) Consola serial")
@@ -569,6 +607,7 @@ def _connect(
                     "device_type": "cisco_ios_serial",
                     "serial_settings": {"port": port, "baudrate": baudrate},
                 }
+                params.update(_serial_authentication_params())
             else:
                 print(Fore.YELLOW + "Modo invalido.")
                 return
@@ -719,6 +758,8 @@ def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
         print("  4) Eliminar un perfil")
         print("  5) Ver borradores seguros")
         print("  6) Ver equipos de un grupo")
+        print("  7) Preparar lote gradual por grupo (sin ejecutar)")
+        print("  8) Ver historial de lotes")
         print("  0) Volver")
         choice = input("> ").strip()
         try:
@@ -745,6 +786,25 @@ def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
                     _show_profiles(matches)
                 else:
                     print(Fore.YELLOW + "No hay equipos en ese grupo.")
+            elif choice == "7":
+                group = input("Grupo: ").strip()
+                profiles = tuple(store.profiles_in_group(group))
+                concurrent = int(input("Equipos maximos a la vez [1]: ").strip() or "1")
+                initial = int(input("Equipos de prueba inicial [1]: ").strip() or "1")
+                preview = BatchPreview(group, profiles, concurrent, initial)
+                print(Fore.MAGENTA + Style.BRIGHT + "\n=== Lote preparado, sin ejecutar ===")
+                print(f"Grupo: {preview.group} | equipos: {len(preview.profiles)}")
+                print(f"Primer paso: {', '.join(item.name for item in preview.first_stage)}")
+                if preview.remaining:
+                    print(f"Despues: {', '.join(item.name for item in preview.remaining)}")
+                print(Fore.YELLOW + "El lote se pausara ante un fallo cuando se habilite su ejecucion.")
+            elif choice == "8":
+                group = input("Grupo (vacio para ver todos): ").strip() or None
+                records = BatchHistoryStore(paths.root / "batch_history.json").list(group)
+                if not records:
+                    print(Fore.YELLOW + "Aun no hay lotes ejecutados.")
+                for record in records:
+                    print(f"{record['timestamp']} | {record['group']} | pausado: {record['paused']}")
             else:
                 print(Fore.YELLOW + "Opcion invalida.")
         except ValueError as exc:
@@ -753,18 +813,27 @@ def _inventory_menu(paths: AppPaths, audit: AuditLogger) -> None:
 
 def _standalone_vlsm(paths: AppPaths) -> None:
     try:
-        base = input("Red base CIDR: ").strip()
-        reserved_text = input("Exclusiones CIDR separadas por coma (opcional): ").strip()
+        base = str(validate_ipv4_network(input("Introducir Red Base: ").strip()))
+        if not _yes("¿Trabajar con subredes?"):
+            _show_network_calculation(base)
+            return
+        reserved_text = input("Excluir IP separadas por coma (opcional): ").strip()
+        reserved = tuple(item.strip() for item in reserved_text.split(",") if item.strip())
+        count = int(input("Cantidad de subredes: ").strip())
+        if count < 1:
+            raise ValidationError("Indica al menos una subred.")
         requests: list[SubnetRequest] = []
-        while True:
-            name = input("Nombre de subred (vacio para calcular): ").strip()
-            if not name:
-                break
+        while len(requests) < count:
+            name = input(f"Nombre de subred {len(requests) + 1}: ").strip()
             hosts = int(input("Hosts: ").strip())
             kind = input("Tipo [lan/point_to_point/loopback] (lan): ").strip() or "lan"
-            gateway = input("Gateway [first/last/none] (first): ").strip() or "first"
-            requests.append(SubnetRequest(name, hosts, kind=kind, gateway_policy=gateway))
-        reserved = tuple(item.strip() for item in reserved_text.split(",") if item.strip())
+            candidate = SubnetRequest(name, hosts, kind=kind, gateway_policy=automatic_gateway_policy(kind))
+            try:
+                calculate_vlsm(base, [*requests, candidate], reserved=reserved)
+            except ValidationError as exc:
+                print(Fore.YELLOW + f"Corrige esta subred antes de continuar: {exc}")
+                continue
+            requests.append(candidate)
         plan = calculate_vlsm(base, requests, reserved=reserved)
         print(Fore.GREEN + Style.BRIGHT + f"Utilizacion: {plan.utilization_percent}%")
         for item in plan.allocations:
@@ -775,6 +844,23 @@ def _standalone_vlsm(paths: AppPaths) -> None:
             print(export_plan_csv(plan, paths.reports / f"vlsm_{stamp}.csv"))
     except (ValidationError, ValueError) as exc:
         print(Fore.YELLOW + f"No se pudo calcular VLSM: {exc}")
+
+
+def _show_network_calculation(base: str) -> None:
+    network = validate_ipv4_network(base)
+    if network.prefixlen == 32:
+        first = last = network.network_address
+        usable, gateway = 1, None
+    elif network.prefixlen == 31:
+        first, last = network.network_address, network.broadcast_address
+        usable, gateway = 2, None
+    else:
+        first, last = network.network_address + 1, network.broadcast_address - 1
+        usable, gateway = network.num_addresses - 2, first
+    print(Fore.GREEN + Style.BRIGHT + "\n=== Calculo automatico de la red ===")
+    print(f"Red: {network} | Mascara: {network.netmask}")
+    print(f"Hosts disponibles: {usable} | Rango: {first}-{last}")
+    print(f"Gateway automatico: {gateway or 'No aplica'} | Broadcast: {network.broadcast_address}")
 
 
 def _scanner_menu(paths: AppPaths) -> None:

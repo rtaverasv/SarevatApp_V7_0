@@ -26,11 +26,47 @@ python -m pip install -r requirements.txt
 python .\SarevatApp_V7_0.py
 ```
 
-La aplicacion crea `runtime\` solamente al ejecutarse. Alli guarda logs, respaldos redactados y reportes.
+La aplicacion crea `runtime\` solamente al ejecutarse. Allí guarda logs,
+respaldos redactados y reportes. Al aplicar un plan, pide una frase de al menos
+12 caracteres para cifrar el respaldo; la frase no se guarda.
 
 También puedes instalar el comando `sarevat` con `python -m pip install .` y
 ejecutarlo desde la terminal. El menú y las protecciones de seguridad son los
 mismos en ambas formas de inicio.
+
+## Interfaz gráfica alpha
+
+La interfaz gráfica es opcional y no reemplaza PowerShell. Para abrirla:
+
+```powershell
+.\.venv\Scripts\python.exe .\SarevatApp_GUI_alpha.py
+```
+
+La alpha conserva el orden del menú de PowerShell y permite usar sus funciones
+desde una ventana: conexión y descubrimiento, VLSM IPv4, escaneo autorizado,
+inventario, perfiles y las catorce herramientas del equipo conectado. Al
+seleccionar consola serial, pide puerto y baudrate; si la línea de consola usa
+autenticación, las credenciales se solicitan solo para esa conexión.
+
+El escaneo primero se prepara con la confirmación `AUTORIZO` y solo inicia tras
+una segunda confirmación. Inventario y perfiles conserva las ocho opciones de
+la versión de PowerShell, incluyendo borradores, grupos, preparación de lotes
+sin ejecución e historial.
+
+Al abrir **Herramientas del equipo conectado**, los planes de servicios,
+IPv4 de interfaz, configuración inicial, NTP/syslog, SNMPv3, AAA y
+endurecimiento siguen el mismo flujo seguro: vista previa redactada, dry-run,
+confirmación, frase local para cifrar el respaldo, checkpoint, postchecks y
+rollback opcional. AAA exige también `CONSOLA_LISTA` y `AAA_APLICAR`.
+La consola libre, `write memory`, comparación, revisión, referencias y cambios
+desde la referencia también están disponibles. VLSM puede preparar la IPv4 de
+cada interfaz calculada, una por una, para que la revises antes de aplicarla.
+
+La GUI es funcional, pero sigue marcada como alpha hasta validarla en un
+laboratorio o un equipo Cisco autorizado. PowerShell se conserva sin cambios
+como alternativa de operación; ambas interfaces usan los mismos validadores y
+motores de planes. La opción de lote, igual que en PowerShell, solo prepara el
+orden: no conecta ni aplica cambios a varios equipos.
 
 ## Inventario y perfiles
 
@@ -67,8 +103,9 @@ no cambia el equipo. Muestra qué controles están pendientes y guarda un report
 en `runtime/reports/` para revisarlo después.
 
 La opción **9) Plantilla NTP y syslog** prepara ambos controles con una sola
-vista previa. Igual que los demás planes, primero se ejecuta en dry-run y solo
-se aplica después de tu confirmación explícita.
+vista previa y permite elegir una base conservadora para **sucursal** o
+**núcleo**. Igual que los demás planes, primero se ejecuta en dry-run y solo se
+aplica después de tu confirmación explícita.
 
 La opción **10) SNMPv3 seguro** agrega un grupo y un usuario con
 autenticación y privacidad. Las claves se solicitan ocultas, no se guardan y
@@ -96,6 +133,11 @@ Al guardar un perfil puedes asignarle grupos separados por comas, como `Core,
 Laboratorio`. En **Inventario y perfiles**, la opción **6) Ver equipos de un
 grupo** permite verlos juntos. Por ahora es solo organización: no conecta ni
 aplica cambios a varios equipos.
+
+La opción **7) Preparar lote gradual por grupo** permite revisar el primer
+grupo de prueba, el límite de equipos simultáneos y los equipos restantes. No
+conecta ni aplica cambios; sirve para validar el orden antes de habilitar una
+ejecución controlada.
 
 ## Pruebas
 

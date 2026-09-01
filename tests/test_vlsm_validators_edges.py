@@ -17,7 +17,14 @@ from sarevat.validators import (
     validate_same_subnet,
     validate_vlan,
 )
-from sarevat.vlsm import SubnetRequest, calculate_vlsm, export_plan_csv, export_plan_json, required_prefix
+from sarevat.vlsm import (
+    SubnetRequest,
+    automatic_gateway_policy,
+    calculate_vlsm,
+    export_plan_csv,
+    export_plan_json,
+    required_prefix,
+)
 
 
 @pytest.mark.parametrize(
@@ -55,12 +62,16 @@ def test_vlsm_request_and_prefix_failure_paths() -> None:
         SubnetRequest("LAN", 0)
     with pytest.raises(ValidationError):
         SubnetRequest("LAN", 1, kind="unknown")
+    with pytest.raises(ValidationError, match="loopback"):
+        SubnetRequest("LO", 2, kind="loopback")
     with pytest.raises(ValidationError):
         SubnetRequest("LAN", 1, gateway_policy="middle")
     with pytest.raises(ValidationError):
         SubnetRequest("LAN", 1, prefix_override=33)
     with pytest.raises(ValidationError):
         required_prefix(SubnetRequest("LAN", 100, prefix_override=30))
+    assert automatic_gateway_policy("lan") == "first"
+    assert automatic_gateway_policy("loopback") == "none"
 
 
 def test_vlsm_empty_overlap_and_small_base_failures() -> None:

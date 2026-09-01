@@ -11,6 +11,7 @@ dependencies = [
 
 [project.scripts]
 sarevat = "sarevat.cli:main"
+sarevat-gui-alpha = "sarevat.gui:main"
 
 [build-system]
 requires = ["setuptools>=68"]

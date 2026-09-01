@@ -223,7 +223,7 @@ def test_free_console_normal_error_and_danger_cancel(monkeypatch: pytest.MonkeyP
 
 
 def test_device_vlsm_builds_interface_plans(monkeypatch: pytest.MonkeyPatch) -> None:
-    answers = iter(["192.0.2.0/24", "GigabitEthernet0/1", "10", "lan", ""])
+    answers = iter(["192.0.2.0/24", "si", "1", "GigabitEthernet0/1", "10", "lan"])
     seen: list[CommandPlan] = []
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     monkeypatch.setattr(cli, "_execute_interactive", lambda _executor, plan: seen.append(plan))
@@ -234,11 +234,11 @@ def test_device_vlsm_builds_interface_plans(monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_standalone_vlsm_export_and_validation_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     paths = _paths(tmp_path)
-    answers = iter(["192.0.2.0/24", "", "LAN", "10", "lan", "first", "", "si"])
+    answers = iter(["192.0.2.0/24", "si", "", "1", "LAN", "10", "lan", "si"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     cli._standalone_vlsm(paths)
     assert list(paths.reports.glob("vlsm_*.json"))
-    answers = iter(["bad", "", ""])
+    answers = iter(["bad"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     cli._standalone_vlsm(paths)
 
@@ -471,7 +471,7 @@ def test_serial_connection_valid_parameters(monkeypatch: pytest.MonkeyPatch, tmp
         def __exit__(self, *_: object) -> None:
             pass
 
-    answers = iter(["2", "switch", "COM99", "9600"])
+    answers = iter(["2", "switch", "COM99", "9600", "no"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
     monkeypatch.setattr(
         "sarevat.cli.ConnectHandler", lambda **kwargs: captured.update(kwargs) or Connection()

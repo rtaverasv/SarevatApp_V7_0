@@ -86,11 +86,26 @@ def test_serial_flow_builds_netmiko_serial_settings(monkeypatch: pytest.MonkeyPa
     captured = _run_connect(
         monkeypatch,
         tmp_path,
-        ["2", "switch", "COM99", "9600", "0"],
+        ["2", "switch", "COM99", "9600", "no", "0"],
         [],
     )
     assert captured["device_type"] == "cisco_ios_serial"
     assert captured["serial_settings"] == {"port": "COM99", "baudrate": 9600}
+
+
+def test_serial_flow_can_use_temporary_console_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured = _run_connect(
+        monkeypatch,
+        tmp_path,
+        ["2", "router", "COM3", "9600", "si", "admin", "0"],
+        ["CONSOLE_PASSWORD", "ENABLE_SECRET"],
+    )
+    assert captured["serial_settings"] == {"port": "COM3", "baudrate": 9600}
+    assert captured["username"] == "admin"
+    assert captured["password"] == "CONSOLE_PASSWORD"
+    assert captured["secret"] == "ENABLE_SECRET"
 
 
 def test_saved_profile_reuses_connection_data_and_updates_inventory(

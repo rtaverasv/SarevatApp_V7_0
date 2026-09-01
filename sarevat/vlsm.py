@@ -26,6 +26,12 @@ class SubnetRequest:
             raise ValidationError("Cada subred necesita al menos una direccion utilizable.")
         if self.kind not in {"lan", "point_to_point", "loopback"}:
             raise ValidationError(f"Tipo de subred no soportado: {self.kind}.")
+        if self.kind == "loopback" and self.hosts != 1:
+            raise ValidationError("Una loopback usa exactamente una dirección; la app asignará /32.")
+        if self.kind == "point_to_point" and self.hosts > 2:
+            raise ValidationError(
+                "Un enlace punto a punto admite hasta dos direcciones; la app asignará /31."
+            )
         if self.gateway_policy not in {"first", "last", "none"}:
             raise ValidationError("Politica de gateway no reconocida.")
         if self.prefix_override is not None and not 0 <= self.prefix_override <= 32:
@@ -88,6 +94,11 @@ def required_prefix(request: SubnetRequest, *, allow_31: bool = True, allow_32: 
             f"El prefijo /{prefix} no ofrece {request.hosts} direcciones para {request.kind}."
         )
     return prefix
+
+
+def automatic_gateway_policy(kind: str) -> str:
+    """Reserva gateway solo cuando una LAN lo necesita."""
+    return "first" if kind == "lan" else "none"
 
 
 def _usable_bounds(

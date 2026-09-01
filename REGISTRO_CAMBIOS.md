@@ -15,6 +15,147 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-08-31 22:57:57 -04:00
+
+- Se integró la documentación más reciente de `main` en `Mods` para resolver el conflicto de la Pull Request, conservando tanto la guía de uso `GUIA_DE_USO.md` como todas las entradas de historial existentes en ambas ramas.
+- Motivo: dejar la comparación `Mods` hacia `main` fusionable sin perder el registro de cambios ni la guía que ya existían en la versión principal.
+- Archivos afectados: `README.md`, `GUIA_DE_USO.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: validación completa aprobada: `163 passed`, Ruff, Bandit, `pip check` y `git diff --check` sin errores. No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 22:36:45 -04:00
+
+- Se corrigió la pantalla de conexión de la GUI alpha. Cuando se abría sin haber seleccionado un perfil, el formulario intentaba obtener un puerto serial de un perfil inexistente; la excepción detenía el dibujo de todos los campos y dejaba visible solo el encabezado.
+- Se aisló la obtención del objetivo de conexión en `profile_connection_target`, que devuelve vacío sin perfil y selecciona correctamente IPv4 o puerto serial cuando sí existe. Se añadió una prueba para los tres casos, evitando que una pantalla nueva vuelva a depender de un perfil guardado.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación, Ruff, Bandit y pruebas específicas de GUI aprobadas (`5 passed`). La verificación visual automática no está disponible en este entorno; se requiere reiniciar la ventana ya abierta para cargar el código corregido. No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 21:24:30 -04:00
+
+- Se completó la operación de la GUI alpha sobre equipos conectados sin retirar PowerShell: tras descubrir el equipo muestra las catorce herramientas ya disponibles en la consola, incluyendo servicios, IPv4 por interfaz, consola libre, configuración inicial, guardado, comparación, revisión, NTP/syslog, SNMPv3, AAA, referencias y endurecimiento.
+- Los planes de configuración usan el mismo `CiscoExecutor` de la aplicación: vista previa con secretos ocultos, dry-run, respaldo cifrado con frase temporal, checkpoint, postchecks, reporte JSON/CSV y rollback opcional. Los planes peligrosos requieren una confirmación reforzada; AAA exige además `CONSOLA_LISTA` al preparar y `AAA_APLICAR` al aplicar, para proteger el acceso de recuperación.
+- Se añadieron controles de sesión para serializar comandos Netmiko, impedir una segunda conexión mientras hay una sesión abierta, cerrar y auditar correctamente la sesión, registrar la consola libre sin secretos y actualizar el inventario cuando se conecta mediante un perfil. La GUI mantiene las credenciales solo durante la conexión actual.
+- VLSM puede preparar una configuración por cada interfaz calculada, usando automáticamente la primera IPv4 utilizable, la máscara y el tipo de subred. El escáner incorpora DNS inverso, consulta opcional de la caché ARP y exportaciones con fecha para no sobrescribir resultados. Los perfiles permiten grupos y la preparación de lotes pide los mismos límites de concurrencia y prueba inicial que PowerShell; sigue sin ejecutar lotes, tal como la versión de consola.
+- Se actualizó la guía de la GUI para reflejar sus capacidades reales, sus confirmaciones y la condición alpha. PowerShell permanece intacto como alternativa operativa.
+- Archivos afectados: `sarevat/gui.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `162 passed` con cobertura, Ruff, Bandit, `pip check` y `git diff --check` aprobados mediante `scripts/validar_calidad.ps1`. No se realizaron conexiones a equipos Cisco reales; la certificación por modelo, IOS/IOS-XE y cableado serial sigue pendiente de laboratorio o hardware autorizado.
+
+### 2026-08-31 20:13:17 -04:00
+
+- Se añadió la interfaz gráfica opcional `SarevatApp_GUI_alpha.py` y el módulo `sarevat/gui.py`, sin cambiar el punto de entrada de PowerShell. La alpha conserva el orden del menú principal y ofrece conexión y descubrimiento en modo lectura, VLSM IPv4, escaneo autorizado e inventario de perfiles.
+- La conexión SSH valida IPv4 y solicita credenciales temporales. La conexión serial muestra puerto y baudrate; puede solicitar usuario, password y enable secret solo si la consola lo requiere. Ningún secreto se almacena en perfiles ni archivos de la aplicación.
+- Se ajustó la navegación y los formularios de la alpha: SSH y consola serial actualizan sus campos al cambiar de método; VLSM presenta primero Red Base, Excluir IP y la decisión de trabajar con subredes; el escaneo se prepara antes de pedir una segunda confirmación para iniciar; e Inventario muestra sus ocho opciones antes de abrir el detalle correspondiente.
+- Se corrigió la pantalla de conexión de la alpha: su contenedor usaba dos mecanismos de distribución incompatibles, lo que podía dejar los campos sin mostrarse. Ahora utiliza una distribución única y vuelve a presentar los campos SSH o serial según la selección.
+- Las configuraciones de IOS se mantienen exclusivamente en PowerShell durante la alpha. Se documentó el comando de inicio y ese límite en `README.md`.
+- Archivos afectados: `SarevatApp_GUI_alpha.py`, `sarevat/gui.py`, `tests/test_gui.py`, `pyproject.toml`, `README.md` y `REGISTRO_CAMBIOS.md`. Comprobaciones: 162 pruebas automatizadas aprobadas, compilación y calidad estática aprobadas. No se realizaron conexiones a equipos reales.
+
+### 2026-08-31 19:58:14 -04:00
+
+- Se añadió autenticación opcional para conexiones por consola serial. Si el equipo solicita acceso por la línea de consola, SarevatApp pregunta el usuario (solo si aplica), password y enable secret para esa conexión; no los guarda en perfiles, registros ni inventario.
+- Se actualizó la maqueta de interfaz: al seleccionar consola serial muestra Puerto serial y Baudrate en lugar de una IPv4, y se incorporó una flecha de retorno al menú principal en la parte superior de cada pantalla propuesta. En el menú principal la flecha no aparece, para no sugerir una salida o un retorno inexistente.
+- Se ajustaron las pruebas de conexión serial para confirmar tanto el acceso directo sin credenciales como el envío temporal de credenciales cuando el operador lo indica.
+- Archivos afectados: `sarevat/cli.py`, `tests/test_cli_connections.py`, `tests/test_cli_round2.py` y `work/gui-flujo-sarevat.html`. Comprobaciones: pruebas de conexión y menús, 34 aprobadas; suite completa, 158 aprobadas.
+
+### 2026-08-31 19:34:34 -04:00
+
+- Se añadió `work/gui-flujo-sarevat.html`, una maqueta interactiva de referencia para una futura interfaz gráfica. Mantiene el orden real del menú de PowerShell: conectar a equipo Cisco, planificar VLSM IPv4, escanear IPv4 e inventario y perfiles.
+- La pantalla de inicio evita datos ficticios; los equipos y grupos aparecen únicamente en Inventario y perfiles. La conexión muestra sus datos esenciales y aclara que las credenciales se piden al conectar, sin guardarlas.
+- Se comprobó que el archivo contiene marcado HTML literal, que los controles del menú actualizan su contenido localmente y que el árbol del repositorio no fue modificado fuera de esta maqueta y su registro. No se ejecutaron pruebas automatizadas: es una propuesta visual aislada que no forma parte de la aplicación ejecutable.
+
+### 2026-08-31 18:45:00 -04:00 — Fase 5: motor de despliegue gradual
+
+- **Cambio:** se añadió un motor de lotes con etapa inicial, concurrencia
+  limitada, ventana de mantenimiento y pausa de equipos pendientes ante un
+  fallo. Se añadió historial local filtrable por grupo y una opción para verlo
+  desde Inventario. No conecta equipos por sí solo.
+- **Motivo:** establecer las salvaguardas verificables antes de integrar la
+  ejecución real de configuraciones por grupo.
+- **Archivos afectados:** `sarevat/batches.py`, `sarevat/cli.py`,
+  `tests/test_batches.py` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `157 passed`; cobertura total de 2,174 líneas ejecutables y
+  90% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones Cisco reales.
+  No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 18:37:31 -04:00 — VLSM: flujo guiado por cantidad de subredes
+
+- **Cambio:** tras introducir la red base, VLSM pregunta si se trabajará con
+  subredes. Si la respuesta es sí, solicita la cantidad y cada nombre; si es
+  no, calcula inmediatamente hosts, rango, gateway y broadcast de la red base.
+  Se eliminó el cierre por campo vacío y la necesidad de escribir comandos como
+  `salir` en campos numéricos.
+- **Motivo:** hacer la navegación más clara y evitar errores de entrada durante
+  el cálculo VLSM y la preparación de interfaces.
+- **Archivos afectados:** `sarevat/cli.py`, `tests/test_cli_round2.py` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `155 passed`; cobertura total de 2,098 líneas ejecutables y
+  91% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-31 18:11:03 -04:00 — VLSM: cálculo automático y validación inmediata
+
+- **Cambio:** VLSM asigna gateway automáticamente a las LAN y no lo reserva en
+  enlaces punto a punto ni loopbacks. Las loopbacks exigen una dirección y usan
+  `/32`; los enlaces punto a punto admiten hasta dos y usan `/31`. Cada subred
+  se comprueba contra la red base antes de aceptar la siguiente.
+- **Motivo:** evitar errores manuales de gateway, tipo de enlace y capacidad al
+  planificar o preparar interfaces para equipos Cisco.
+- **Archivos afectados:** `sarevat/vlsm.py`, `sarevat/cli.py`,
+  `tests/test_cli_round2.py`, `tests/test_vlsm_validators_edges.py` y
+  `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `155 passed`; cobertura total de 2,072 líneas ejecutables y
+  92% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-31 18:00:05 -04:00 — VLSM: etiquetas más claras
+
+- **Cambio:** se reemplazaron las etiquetas visibles “Red base CIDR” y
+  “Exclusiones CIDR” por “Introducir Red Base” y “Excluir IP”.
+- **Motivo:** reducir terminología técnica en el flujo VLSM sin alterar la
+  validación IPv4 ni el formato de entrada esperado.
+- **Archivos afectados:** `sarevat/cli.py` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `35 passed` en pruebas de VLSM y navegación; Ruff y
+  `git diff --check` finalizaron sin errores. No se realizaron conexiones Cisco
+  reales.
+
+### 2026-08-31 17:44:00 -04:00 — Fase 5: preparación gradual de lotes
+
+- **Cambio:** se añadió la preparación de un lote por grupo con límite de
+  concurrencia, primer grupo de prueba y equipos restantes. Esta vista no
+  conecta ni aplica configuraciones.
+- **Motivo:** permitir revisar el despliegue gradual antes de habilitar
+  operaciones masivas sobre equipos reales.
+- **Archivos afectados:** `sarevat/batches.py`, `sarevat/cli.py`,
+  `tests/test_batches.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** las pruebas específicas de lotes, inventario y CLI pasaron
+  (`39 passed`); Ruff finalizó sin errores. Falta la batería completa al cerrar
+  el bloque de la Fase 5. No se realizaron conexiones Cisco reales.
+
+### 2026-08-31 17:37:59 -04:00 — Fase 6: respaldos cifrados por frase temporal
+
+- **Cambio:** los respaldos redactados se cifran con AES-GCM y una clave derivada
+  de la frase que el operador introduce al aplicar un plan. La frase no se
+  persiste; el archivo detecta una frase incorrecta o una alteración.
+- **Motivo:** proteger los respaldos locales sin almacenar contraseñas, claves
+  ni frases secretas dentro de la aplicación.
+- **Archivos afectados:** `sarevat/backup_crypto.py`,
+  `sarevat/cisco/executor.py`, `sarevat/cli.py`, `requirements.txt`,
+  `tests/test_backup_crypto.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `154 passed`; cobertura total de 2,024 líneas ejecutables y
+  92% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
+
+### 2026-08-28 20:13:52 -04:00 — Fase 4: plantilla de observabilidad por sitio
+
+- **Cambio:** la plantilla de NTP y syslog ahora permite seleccionar sucursal o
+  núcleo. El perfil de núcleo añade únicamente marcas de tiempo de depuración;
+  ambos perfiles conservan dry-run, confirmación, checkpoint y rollback.
+- **Motivo:** completar plantillas por sitio sin modificar VTY, usuarios, AAA,
+  SNMP, claves o credenciales.
+- **Archivos afectados:** `sarevat/cisco/services.py`, `sarevat/cli.py`,
+  `tests/test_discovery_services.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- **Verificación:** `152 passed`; cobertura total de 1,977 líneas ejecutables y
+  93% de ramas. Ruff, Bandit, `pip check` y `git diff --check` finalizaron sin
+  errores. No se realizaron conexiones a equipos Cisco reales.
 ### 2026-08-28 07:00:54 -04:00 — Guía paso a paso de uso y navegación
 
 - **Cambio:** se añadió una guía práctica en español que explica el inicio,
