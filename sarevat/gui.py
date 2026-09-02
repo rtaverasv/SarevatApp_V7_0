@@ -588,8 +588,18 @@ class SarevatGui(tk.Tk):
             return
         self._clear()
         self._page_header(
-            "Protocolos y servicios", "Selecciona un servicio compatible con el equipo conectado."
+            "Protocolos y servicios",
+            "Selecciona un servicio compatible. Se validan datos y dependencias antes de preparar el plan.",
         )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        form.pack(fill="x")
+        ttk.Label(
+            form,
+            text="Plan de configuración",
+            background="#ffffff",
+            foreground="#102a43",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w", pady=(0, 10))
         available = [
             item
             for item in SERVICE_CATALOG.items()
@@ -598,13 +608,13 @@ class SarevatGui(tk.Tk):
         default_selection = f"{available[0][0]} | {available[0][1].name}" if available else ""
         selected = tk.StringVar(value=default_selection)
         selector = ttk.Combobox(
-            self.content,
+            form,
             textvariable=selected,
             values=[f"{key} | {spec.name}" for key, spec in available],
             state="readonly",
         )
         selector.pack(fill="x")
-        fields = ttk.Frame(self.content, style="App.TFrame")
+        fields = ttk.Frame(form, style="Card.TFrame")
         fields.pack(fill="x", pady=(14, 0))
         values: dict[str, tk.StringVar] = {}
 
@@ -664,7 +674,7 @@ class SarevatGui(tk.Tk):
 
         selector.bind("<<ComboboxSelected>>", render)
         render()
-        ttk.Button(self.content, text="Preparar plan", style="Primary.TButton", command=prepare).pack(
+        ttk.Button(form, text="Preparar plan seguro", style="Primary.TButton", command=prepare).pack(
             fill="x", pady=(14, 0)
         )
 

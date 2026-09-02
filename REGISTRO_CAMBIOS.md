@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 12:00:00 -04:00
+
+- Se rediseñó el catálogo de protocolos y servicios como un formulario de plan seguro que comunica validación de datos y dependencias antes de la vista previa.
+- Motivo: facilitar la configuración Cisco desde la nueva GUI sin modificar los constructores de planes, validadores, comandos ni flujo de dry-run.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 11:40:00 -04:00
 
 - Se reorganizó la entrada de inventario en perfiles de equipos y planificación/evidencia, preservando grupos, borradores, lotes e historial local.
