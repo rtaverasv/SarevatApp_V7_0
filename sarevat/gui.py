@@ -941,12 +941,32 @@ class SarevatGui(tk.Tk):
         session = self.session
         self._clear()
         self._page_header(
-            "Consola libre",
-            "Los comandos se envían uno a uno. Los comandos peligrosos requieren confirmación.",
+            "Consola libre controlada",
+            "Los comandos se envían uno a uno, se auditan y requieren confirmación si son de alto impacto.",
         )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(18, 16))
+        form.pack(fill="x")
+        ttk.Label(
+            form,
+            text="Comando IOS",
+            background="#ffffff",
+            foreground="#102a43",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w")
         command = tk.StringVar()
-        output = tk.Text(self.content, height=16, wrap="word", state="disabled", font=("Consolas", 10))
-        ttk.Entry(self.content, textvariable=command).pack(fill="x", pady=(0, 8))
+        output = tk.Text(
+            self.content,
+            height=16,
+            wrap="word",
+            state="disabled",
+            font=("Consolas", 10),
+            background="#102a43",
+            foreground="#e5f0f5",
+            relief="flat",
+            padx=12,
+            pady=10,
+        )
+        ttk.Entry(form, textvariable=command).pack(fill="x", pady=(4, 10))
 
         def send() -> None:
             value = command.get().strip()
@@ -983,7 +1003,7 @@ class SarevatGui(tk.Tk):
             )
             output.config(state="disabled")
 
-        ttk.Button(self.content, text="Enviar comando", style="Primary.TButton", command=send).pack(fill="x")
+        ttk.Button(form, text="Enviar comando", style="Primary.TButton", command=send).pack(fill="x")
         output.pack(fill="both", expand=True, pady=(12, 0))
 
     def _write_memory(self) -> None:

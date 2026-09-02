@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 14:00:00 -04:00
+
+- Se modernizó la consola libre con un formulario de comando y una salida separada, conservando la auditoría y las confirmaciones de comandos de alto impacto.
+- Motivo: integrar una función avanzada de SarevatApp en el mismo lenguaje visual de escritorio sin permitir cambios silenciosos.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 163 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 13:40:00 -04:00
 
 - Se realizó una comprobación visual de arranque de la GUI local modernizada y de su panel principal de operaciones.
