@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 10:00:00 -04:00
+
+- Se modernizó el shell de escritorio de la GUI: navegación lateral, panel de operaciones y estilo visual inspirado en el prototipo, conservando las páginas y el motor local existentes.
+- Motivo: migrar la apariencia de SarevatApp sin convertirla en una aplicación web ni alterar SSH, serial, VLSM, escáner, inventario o los flujos seguros de Cisco.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 09:00:00 -04:00
 
 - Se añadió el cliente local `sarevat.agent_client`, que obtiene trabajos autenticados de la GUI web y los ejecuta mediante `agent_runtime` y el motor 7.0. Resuelve contraseñas y enable secret exclusivamente desde variables locales por referencia de vault.

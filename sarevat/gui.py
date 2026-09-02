@@ -143,10 +143,10 @@ class SarevatGui(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("SarevatApp 7.0 - GUI Alpha")
-        self.minsize(900, 610)
-        self.geometry("1050x690")
-        self.configure(bg="#f5f7f7")
+        self.title("SarevatApp 7.0")
+        self.minsize(1080, 680)
+        self.geometry("1220x760")
+        self.configure(bg="#f6f8fb")
         self.runtime = Path(__file__).resolve().parent.parent / "runtime"
         self.runtime.mkdir(exist_ok=True)
         self.inventory = InventoryStore(self.runtime / "inventory.json")
@@ -169,46 +169,47 @@ class SarevatGui(tk.Tk):
     def _configure_style(self) -> None:
         style = ttk.Style(self)
         style.theme_use("clam")
-        style.configure("App.TFrame", background="#ffffff")
-        style.configure("Side.TFrame", background="#edf2f3")
+        style.configure("App.TFrame", background="#f6f8fb")
+        style.configure("Side.TFrame", background="#102a43")
+        style.configure("Card.TFrame", background="#ffffff")
         style.configure(
-            "Title.TLabel", background="#ffffff", foreground="#15242d", font=("Segoe UI", 18, "bold")
+            "Title.TLabel", background="#f6f8fb", foreground="#102a43", font=("Segoe UI", 22, "bold")
         )
-        style.configure("Body.TLabel", background="#ffffff", foreground="#4f646d", font=("Segoe UI", 10))
+        style.configure("Body.TLabel", background="#f6f8fb", foreground="#526777", font=("Segoe UI", 10))
         style.configure(
-            "Side.TButton", background="#edf2f3", foreground="#18333c", padding=(14, 10), anchor="w"
+            "Side.TButton", background="#102a43", foreground="#dce8f2", padding=(14, 11), anchor="w"
         )
-        style.map("Side.TButton", background=[("active", "#dcebea")])
-        style.configure("Primary.TButton", background="#287b73", foreground="#ffffff", padding=(14, 10))
-        style.map("Primary.TButton", background=[("active", "#20655e")])
-        style.configure("Back.TButton", background="#ffffff", foreground="#287b73", padding=(0, 3))
+        style.map("Side.TButton", background=[("active", "#1d4e67")])
+        style.configure("Primary.TButton", background="#197278", foreground="#ffffff", padding=(15, 10))
+        style.map("Primary.TButton", background=[("active", "#125c61")])
+        style.configure("Back.TButton", background="#f6f8fb", foreground="#197278", padding=(0, 3))
         style.configure("Treeview", rowheight=28, font=("Segoe UI", 9))
         style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"))
 
     def _build_shell(self) -> None:
-        header = ttk.Frame(self, style="App.TFrame", padding=(22, 15))
+        header = ttk.Frame(self, style="App.TFrame", padding=(28, 18))
         header.pack(fill="x")
         ttk.Label(header, text="Sarevat", style="Title.TLabel").pack(side="left")
-        ttk.Label(header, text="App", style="Title.TLabel", foreground="#287b73").pack(side="left")
-        ttk.Label(header, text="GUI Alpha  |  Sesion local segura", style="Body.TLabel").pack(side="right")
+        ttk.Label(header, text="App", style="Title.TLabel", foreground="#197278").pack(side="left")
+        ttk.Label(header, text="Escritorio local · Sesión segura", style="Body.TLabel").pack(side="right")
         ttk.Separator(self).pack(fill="x")
         body = ttk.Frame(self, style="App.TFrame")
         body.pack(fill="both", expand=True)
-        self.sidebar = ttk.Frame(body, style="Side.TFrame", width=250, padding=(12, 18))
+        self.sidebar = ttk.Frame(body, style="Side.TFrame", width=260, padding=(14, 22))
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
         ttk.Label(
             self.sidebar,
-            text="Menu principal",
-            background="#edf2f3",
-            foreground="#435964",
+            text="OPERACIONES",
+            background="#102a43",
+            foreground="#9db7c9",
             font=("Segoe UI", 10, "bold"),
         ).pack(anchor="w", padx=10, pady=(0, 9))
         for number, name, page in (
-            ("1)", "Conectar a equipo Cisco", "connect"),
-            ("2)", "Planificar VLSM IPv4", "vlsm"),
-            ("3)", "Escanear IPv4", "scan"),
-            ("4)", "Inventario y perfiles", "inventory"),
+            ("01", "Conexiones", "connect"),
+            ("02", "Planificador VLSM", "vlsm"),
+            ("03", "Escáner autorizado", "scan"),
+            ("04", "Equipos e inventario", "inventory"),
         ):
             ttk.Button(
                 self.sidebar,
@@ -219,12 +220,12 @@ class SarevatGui(tk.Tk):
         ttk.Separator(self.sidebar).pack(fill="x", padx=2, pady=16)
         ttk.Label(
             self.sidebar,
-            text="PowerShell sigue disponible\ncomo alternativa de operacion.",
-            background="#edf2f3",
-            foreground="#60747d",
+            text="Motor Sarevat 7.0\nSSH, serial y datos locales.",
+            background="#102a43",
+            foreground="#9db7c9",
             justify="left",
         ).pack(anchor="w", padx=10)
-        self.content = ttk.Frame(body, style="App.TFrame", padding=(32, 28))
+        self.content = ttk.Frame(body, style="App.TFrame", padding=(42, 34))
         self.content.pack(side="left", fill="both", expand=True)
 
     def _clear(self) -> None:
@@ -244,18 +245,38 @@ class SarevatGui(tk.Tk):
     def show_menu(self) -> None:
         self.current_page = "menu"
         self._clear()
-        self._page_header("Menu principal", "Selecciona una opcion del menu para comenzar.", back=False)
-        note = ttk.Label(
+        self._page_header(
+            "Centro de operaciones",
+            "Control local de red con evidencia, no con suposiciones.",
+            back=False,
+        )
+        actions = ttk.Frame(self.content, style="App.TFrame")
+        actions.pack(fill="x", pady=(14, 18))
+        for title, detail, page in (
+            ("Conectar equipo", "SSH o consola serial; credenciales temporales.", "connect"),
+            ("Diseñar VLSM", "Subredes IPv4 con resultados separados y verificables.", "vlsm"),
+            ("Inventario", "Perfiles, grupos, borradores y lotes locales.", "inventory"),
+        ):
+            card = ttk.Frame(actions, style="Card.TFrame", padding=(18, 16))
+            card.pack(side="left", fill="both", expand=True, padx=(0, 10))
+            ttk.Label(
+                card, text=title, background="#ffffff", foreground="#102a43", font=("Segoe UI", 11, "bold")
+            ).pack(anchor="w")
+            ttk.Label(
+                card, text=detail, background="#ffffff", foreground="#526777", wraplength=190
+            ).pack(anchor="w", pady=(6, 12))
+            ttk.Button(
+                card, text="Abrir", style="Primary.TButton", command=lambda item=page: self.show_page(item)
+            ).pack(anchor="w")
+        ttk.Label(
             self.content,
             text=(
-                "Conecta, descubre y prepara cambios con la misma proteccion de la version PowerShell: "
-                "vista previa, dry-run, respaldo cifrado, checkpoint y confirmaciones."
+                "Todos los cambios Cisco conservan vista previa, dry-run, respaldo cifrado, "
+                "checkpoint, postchecks y rollback confirmado."
             ),
             style="Body.TLabel",
-            wraplength=650,
-            padding=(16, 14),
-        )
-        note.pack(anchor="w", pady=(12, 0))
+            wraplength=760,
+        ).pack(anchor="w", pady=(8, 0))
 
     def show_page(self, page: str) -> None:
         self.current_page = page
