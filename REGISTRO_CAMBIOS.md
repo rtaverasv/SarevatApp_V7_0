@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 13:20:00 -04:00
+
+- Se modernizó la vista previa de planes Cisco con una jerarquía visual para dry-run, avisos y comandos redactados antes de habilitar la aplicación.
+- Motivo: hacer visible el flujo seguro de cambios sin modificar `CiscoExecutor`, checkpoint, backup, postchecks, rollback ni confirmaciones.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 163 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 13:00:00 -04:00
 
 - Se retiraron los clientes y adaptadores experimentales de agente HTTPS que se habían añadido durante una exploración web previa.

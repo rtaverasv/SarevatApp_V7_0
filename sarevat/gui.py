@@ -792,18 +792,49 @@ class SarevatGui(tk.Tk):
         with suppress(OSError, ValueError):
             DraftStore(self.runtime / "drafts.json").add_plan(plan)
         review = tk.Toplevel(self)
-        review.title(f"Vista previa: {plan.name}")
+        review.title(f"Plan seguro: {plan.name}")
         review.transient(self)
-        review.configure(padx=18, pady=18)
-        ttk.Label(review, text=plan.name, font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        review.configure(background="#f6f8fb", padx=24, pady=22)
+        ttk.Label(
+            review,
+            text="VISTA PREVIA SEGURA",
+            background="#f6f8fb",
+            foreground="#197278",
+            font=("Segoe UI", 9, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            review,
+            text=plan.name,
+            background="#f6f8fb",
+            foreground="#102a43",
+            font=("Segoe UI", 16, "bold"),
+        ).pack(anchor="w", pady=(3, 0))
         if plan.warnings:
-            ttk.Label(review, text="\n".join(plan.warnings), wraplength=700).pack(anchor="w", pady=(8, 0))
-        commands = tk.Text(review, height=min(16, max(5, len(plan.commands) + 2)), width=88, wrap="word")
+            ttk.Label(
+                review,
+                text="\n".join(plan.warnings),
+                background="#f6f8fb",
+                foreground="#a05132",
+                wraplength=700,
+            ).pack(anchor="w", pady=(8, 0))
+        commands = tk.Text(
+            review,
+            height=min(16, max(5, len(plan.commands) + 2)),
+            width=88,
+            wrap="word",
+            background="#102a43",
+            foreground="#e5f0f5",
+            relief="flat",
+            padx=12,
+            pady=10,
+        )
         commands.insert("1.0", "\n".join(redact_text(command) for command in plan.commands))
         commands.config(state="disabled")
         commands.pack(fill="both", expand=True, pady=(12, 0))
-        status = tk.StringVar(value="Ejecutando dry-run; no se enviaran comandos.")
-        ttk.Label(review, textvariable=status, wraplength=700).pack(anchor="w", pady=(8, 0))
+        status = tk.StringVar(value="Validando con dry-run: no se enviarán comandos.")
+        ttk.Label(
+            review, textvariable=status, background="#f6f8fb", foreground="#526777", wraplength=700
+        ).pack(anchor="w", pady=(10, 0))
 
         def after_dry(result: object) -> None:
             if isinstance(result, Exception):
@@ -884,7 +915,7 @@ class SarevatGui(tk.Tk):
                 )
 
         apply_button = ttk.Button(
-            review, text="Aplicar despues del dry-run", style="Primary.TButton", command=apply
+            review, text="Aplicar tras dry-run validado", style="Primary.TButton", command=apply
         )
         apply_button.pack(fill="x", pady=(12, 0))
         apply_button.state(["disabled"])
