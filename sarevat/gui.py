@@ -220,6 +220,21 @@ class SarevatGui(tk.Tk):
         ttk.Separator(self.sidebar).pack(fill="x", padx=2, pady=16)
         ttk.Label(
             self.sidebar,
+            text="EQUIPO ACTIVO",
+            background="#102a43",
+            foreground="#9db7c9",
+            font=("Segoe UI", 9, "bold"),
+        ).pack(anchor="w", padx=10, pady=(0, 6))
+        self.connected_tools_button = ttk.Button(
+            self.sidebar,
+            text="Abrir herramientas",
+            style="Side.TButton",
+            command=self._device_tools_page,
+            state="disabled",
+        )
+        self.connected_tools_button.pack(fill="x", pady=2)
+        ttk.Label(
+            self.sidebar,
             text="Motor Sarevat 7.0\nSSH, serial y datos locales.",
             background="#102a43",
             foreground="#9db7c9",
@@ -231,6 +246,13 @@ class SarevatGui(tk.Tk):
     def _clear(self) -> None:
         for child in self.content.winfo_children():
             child.destroy()
+
+    def _update_session_navigation(self) -> None:
+        """Mantiene visible el acceso a las herramientas de una sesión abierta."""
+        if self.session:
+            self.connected_tools_button.state(["!disabled"])
+        else:
+            self.connected_tools_button.state(["disabled"])
 
     def _page_header(self, title: str, subtitle: str, *, back: bool = True) -> None:
         if back:
@@ -397,6 +419,7 @@ class SarevatGui(tk.Tk):
                 text.set(self._connection_error(result))
                 return
             self.session = result
+            self._update_session_navigation()
             facts = result.facts
             if result.profile_id:
                 with suppress(OSError, ValueError):
@@ -563,6 +586,7 @@ class SarevatGui(tk.Tk):
             return
         current = self.session
         self.session = None
+        self._update_session_navigation()
         self._run_session_worker(lambda: self._close_session_connection(current), lambda _: self.show_menu())
 
     def _refresh_session_facts(self) -> None:

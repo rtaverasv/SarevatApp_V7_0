@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 14:40:00 -04:00
+
+- Se añadió un acceso persistente en la barra lateral a las herramientas del equipo mientras una sesión SSH o serial está abierta; se habilita al conectar y se deshabilita al desconectar.
+- Motivo: evitar que las vistas de estado, cumplimiento o evidencia oculten el camino de regreso a las funciones Cisco de una sesión activa durante la migración visual.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación, 163 pruebas con `pytest -q`, Ruff, Bandit y `git diff --check` pasaron. La comprobación visual de la barra lateral se realizó sin conexiones Cisco reales.
+
 ### 2026-09-02 14:20:00 -04:00
 
 - Se unificó la presentación de evidencia local en tarjetas para cumplimiento, diferencias, referencias, borradores, grupos y lotes.
