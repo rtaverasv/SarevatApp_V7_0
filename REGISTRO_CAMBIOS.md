@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 12:20:00 -04:00
+
+- Se unificó la presentación de los formularios especiales de IPv4, configuración inicial, observabilidad, SNMPv3 y AAA en tarjetas de plan seguro.
+- Motivo: trasladar esos flujos a la nueva GUI de escritorio sin alterar sus validaciones, secretos temporales ni confirmaciones de alto impacto.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 12:00:00 -04:00
 
 - Se rediseñó el catálogo de protocolos y servicios como un formulario de plan seguro que comunica validación de datos y dependencias antes de la vista previa.

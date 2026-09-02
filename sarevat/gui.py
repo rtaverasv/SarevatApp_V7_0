@@ -756,16 +756,22 @@ class SarevatGui(tk.Tk):
     ) -> None:
         self._clear()
         self._page_header(title, "Los datos se validan antes de mostrar cualquier comando.")
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        form.pack(fill="x")
         values: dict[str, tk.StringVar] = {}
         for label, key in fields:
-            ttk.Label(self.content, text=label, style="Body.TLabel").pack(anchor="w")
+            ttk.Label(
+                form, text=label, background="#ffffff", foreground="#526777", font=("Segoe UI", 10)
+            ).pack(anchor="w")
             value = tk.StringVar(value="2048" if key == "rsa_bits" else "")
-            ttk.Entry(self.content, textvariable=value, show="*" if hidden and key in hidden else "").pack(
+            ttk.Entry(form, textvariable=value, show="*" if hidden and key in hidden else "").pack(
                 fill="x", pady=(2, 8)
             )
             values[key] = value
         if notice:
-            ttk.Label(self.content, text=notice, style="Body.TLabel", wraplength=680).pack(
+            ttk.Label(
+                form, text=notice, background="#ffffff", foreground="#526777", wraplength=680
+            ).pack(
                 anchor="w", pady=(4, 8)
             )
 
@@ -775,7 +781,7 @@ class SarevatGui(tk.Tk):
             except ValidationError as exc:
                 messagebox.showwarning("Datos por corregir", str(exc), parent=self)
 
-        ttk.Button(self.content, text="Preparar plan", style="Primary.TButton", command=prepare).pack(
+        ttk.Button(form, text="Validar y preparar plan", style="Primary.TButton", command=prepare).pack(
             fill="x", pady=(8, 0)
         )
 
