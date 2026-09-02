@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 12:40:00 -04:00
+
+- Se actualizó el punto de entrada y la guía para identificar la GUI como una aplicación local de escritorio, sin navegador ni servidor web.
+- Motivo: alinear la documentación con la migración visual y preservar PowerShell como alternativa sobre el mismo motor local.
+- Archivos afectados: `SarevatApp_GUI_alpha.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación, 168 pruebas con `pytest -q`, Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 12:20:00 -04:00
 
 - Se unificó la presentación de los formularios especiales de IPv4, configuración inicial, observabilidad, SNMPv3 y AAA en tarjetas de plan seguro.

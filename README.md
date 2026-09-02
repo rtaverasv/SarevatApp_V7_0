@@ -34,9 +34,11 @@ También puedes instalar el comando `sarevat` con `python -m pip install .` y
 ejecutarlo desde la terminal. El menú y las protecciones de seguridad son los
 mismos en ambas formas de inicio.
 
-## Interfaz gráfica alpha
+## Interfaz gráfica de escritorio
 
-La interfaz gráfica es opcional y no reemplaza PowerShell. Para abrirla:
+La interfaz gráfica se ejecuta localmente en tu PC y no requiere navegador ni
+servidor web. Comparte el mismo motor que PowerShell, que sigue disponible como
+alternativa. Para abrirla:
 
 ```powershell
 .\.venv\Scripts\python.exe .\SarevatApp_GUI_alpha.py
@@ -62,11 +64,10 @@ La consola libre, `write memory`, comparación, revisión, referencias y cambios
 desde la referencia también están disponibles. VLSM puede preparar la IPv4 de
 cada interfaz calculada, una por una, para que la revises antes de aplicarla.
 
-La GUI es funcional, pero sigue marcada como alpha hasta validarla en un
-laboratorio o un equipo Cisco autorizado. PowerShell se conserva sin cambios
-como alternativa de operación; ambas interfaces usan los mismos validadores y
-motores de planes. La opción de lote, igual que en PowerShell, solo prepara el
-orden: no conecta ni aplica cambios a varios equipos.
+La GUI conserva los mismos validadores y motores de planes de PowerShell. Debe
+validarse en un laboratorio o equipo Cisco autorizado antes de usar cambios en
+producción. La opción de lote, igual que en PowerShell, solo prepara el orden:
+no conecta ni aplica cambios a varios equipos.
 
 ## Inventario y perfiles
 

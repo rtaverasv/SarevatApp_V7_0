@@ -1,4 +1,4 @@
-"""Punto de entrada opcional para la interfaz grafica alpha de SarevatApp."""
+"""Punto de entrada para la interfaz gráfica local de SarevatApp."""
 
 from sarevat.gui import main
 
