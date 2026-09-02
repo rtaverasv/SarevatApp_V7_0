@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 06:00:00 -04:00
+
+- Se añadió `sarevat.agent_runtime`, un adaptador no interactivo para la futura GUI web. Reutiliza el descubrimiento Cisco, los validadores y `CiscoExecutor` existentes para trabajos estructurados de descubrimiento, prueba SSH y servicios. Rechaza transportes o tipos de trabajo no permitidos y no acepta comandos IOS libres.
+- Motivo: migrar la interfaz sin duplicar ni debilitar el flujo 7.0 de validación, dry-run, checkpoint, postchecks, rollback y redacción de secretos.
+- Archivos afectados: `sarevat/agent_runtime.py`, `tests/test_agent_runtime.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 167 pruebas pasaron con `pytest -q`; pruebas específicas del adaptador, Ruff y Bandit pasaron. Se revisó `git diff --check`; no se realizaron conexiones Cisco reales.
+
 ### 2026-08-31 22:57:57 -04:00
 
 - Se integró la documentación más reciente de `main` en `Mods` para resolver el conflicto de la Pull Request, conservando tanto la guía de uso `GUIA_DE_USO.md` como todas las entradas de historial existentes en ambas ramas.
