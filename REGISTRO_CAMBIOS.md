@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 10:40:00 -04:00
+
+- Se reorganizaron las catorce herramientas del equipo conectado en tarjetas de operación/configuración, seguridad/observabilidad y evidencia/mantenimiento.
+- Motivo: hacer visible el alcance completo de SarevatApp 7.0 en la nueva GUI de escritorio sin retirar opciones ni debilitar las confirmaciones de cambios.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 10:20:00 -04:00
 
 - Se rediseñó la vista de conexión y el resumen de descubrimiento de la GUI de escritorio con tarjetas y mensajes explícitos sobre el uso temporal de secretos.

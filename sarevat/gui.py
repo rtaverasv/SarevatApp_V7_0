@@ -502,34 +502,59 @@ class SarevatGui(tk.Tk):
             return
         self._clear()
         self._page_header(
-            f"Equipo conectado: {self.session.facts.hostname}",
-            "Cada configuracion genera vista previa, dry-run y confirmacion antes de enviar comandos.",
+            f"Configuración · {self.session.facts.hostname}",
+            "Cada cambio conserva vista previa, dry-run, respaldo cifrado, checkpoint y confirmación.",
         )
-        options = (
-            ("1)", "Ver estado e inventario", self._refresh_session_facts),
-            ("2)", "Protocolos y servicios", self._service_catalog_page),
-            ("3)", "Configurar IPv4 en interfaz", self._interface_ipv4_page),
-            ("4)", "Consola libre", self._free_console_page),
-            ("5)", "Configuracion inicial segura", self._initial_setup_page),
-            ("6)", "Guardar configuracion (write memory)", self._write_memory),
-            ("7)", "Comparar configuracion con archivo", self._compare_file),
-            ("8)", "Revision de seguridad (solo lectura)", self._compliance_page),
-            ("9)", "Plantilla NTP y syslog", self._observability_page),
-            ("10)", "SNMPv3 seguro", self._snmpv3_page),
-            ("11)", "AAA local con recuperacion", self._aaa_page),
-            ("12)", "Guardar referencia segura", self._save_baseline),
-            ("13)", "Ver cambios desde la referencia", self._show_drift),
-            ("14)", "Endurecimiento basico seguro", self._hardening),
+        groups = (
+            (
+                "Operación y configuración",
+                (
+                    ("Estado e inventario", self._refresh_session_facts),
+                    ("Protocolos y servicios", self._service_catalog_page),
+                    ("IPv4 en interfaz", self._interface_ipv4_page),
+                    ("Configuración inicial", self._initial_setup_page),
+                ),
+            ),
+            (
+                "Seguridad y observabilidad",
+                (
+                    ("NTP y syslog", self._observability_page),
+                    ("SNMPv3 seguro", self._snmpv3_page),
+                    ("AAA con recuperación", self._aaa_page),
+                    ("Endurecimiento básico", self._hardening),
+                    ("Revisión de seguridad", self._compliance_page),
+                ),
+            ),
+            (
+                "Evidencia y mantenimiento",
+                (
+                    ("Guardar configuración", self._write_memory),
+                    ("Comparar con archivo", self._compare_file),
+                    ("Guardar referencia segura", self._save_baseline),
+                    ("Cambios desde referencia", self._show_drift),
+                    ("Consola libre", self._free_console_page),
+                ),
+            ),
         )
         grid = ttk.Frame(self.content, style="App.TFrame")
         grid.pack(fill="x")
         for column in range(2):
             grid.columnconfigure(column, weight=1)
-        for index, (number, label, action) in enumerate(options):
-            ttk.Button(grid, text=f"{number}   {label}", command=action).grid(
-                row=index // 2, column=index % 2, sticky="ew", padx=(0, 8) if index % 2 == 0 else 0, pady=3
+        for index, (title, options) in enumerate(groups):
+            card = ttk.Frame(grid, style="Card.TFrame", padding=(18, 16))
+            card.grid(
+                row=index // 2,
+                column=index % 2,
+                sticky="nsew",
+                padx=(0, 12) if index % 2 == 0 else 0,
+                pady=6,
             )
-        ttk.Button(self.content, text="Desconectar", command=self._disconnect_session).pack(
+            ttk.Label(
+                card, text=title, background="#ffffff", foreground="#102a43", font=("Segoe UI", 11, "bold")
+            ).pack(anchor="w", pady=(0, 8))
+            for label, action in options:
+                ttk.Button(card, text=label, command=action).pack(fill="x", pady=2)
+        ttk.Button(self.content, text="Desconectar sesión", command=self._disconnect_session).pack(
             anchor="w", pady=(16, 0)
         )
 
