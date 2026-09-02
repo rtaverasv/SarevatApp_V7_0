@@ -292,15 +292,29 @@ class SarevatGui(tk.Tk):
         profile = self.pending_profile
         self.pending_profile = None
         self._page_header(
-            "Conectar a equipo Cisco",
+            "Nueva conexión Cisco",
             (
                 f"Perfil seleccionado: {profile.name}. Las credenciales se piden al conectar y no se guardan."
                 if profile
                 else "Las credenciales se usan una sola vez para descubrir el equipo y nunca se guardan."
             ),
         )
-        form = ttk.Frame(self.content, style="App.TFrame")
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
         form.pack(anchor="w", fill="x")
+        ttk.Label(
+            form,
+            text="Conexión temporal",
+            background="#ffffff",
+            foreground="#102a43",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            form,
+            text="Los secretos solo existen durante esta sesión y se eliminan antes de guardar un perfil.",
+            background="#ffffff",
+            foreground="#526777",
+            wraplength=720,
+        ).pack(anchor="w", pady=(4, 18))
         transport = tk.StringVar(value=profile.transport if profile else "ssh")
         kind = tk.StringVar(value=profile.device_kind.value if profile else "router")
         target = tk.StringVar(value=profile_connection_target(profile))
@@ -309,7 +323,7 @@ class SarevatGui(tk.Tk):
         password = tk.StringVar()
         secret = tk.StringVar()
         console_auth = tk.BooleanVar(value=False)
-        selectors = ttk.Frame(form, style="App.TFrame")
+        selectors = ttk.Frame(form, style="Card.TFrame")
         selectors.pack(fill="x")
         for column in range(2):
             selectors.columnconfigure(column, weight=1)
@@ -322,7 +336,7 @@ class SarevatGui(tk.Tk):
         )
         mode_box = ttk.Combobox(selectors, textvariable=transport, values=("ssh", "serial"), state="readonly")
         mode_box.grid(row=1, column=1, sticky="ew", pady=(3, 13))
-        dynamic = ttk.Frame(form, style="App.TFrame")
+        dynamic = ttk.Frame(form, style="Card.TFrame")
         dynamic.pack(fill="x")
         status = tk.StringVar(value="Listo para conectar y descubrir en modo lectura.")
 
@@ -401,7 +415,7 @@ class SarevatGui(tk.Tk):
         mode_box.bind("<<ComboboxSelected>>", render_fields)
         render_fields()
         button = ttk.Button(
-            form, text="Conectar y descubrir equipo", style="Primary.TButton", command=connect
+            form, text="Conectar y descubrir", style="Primary.TButton", command=connect
         )
         button.pack(fill="x", pady=(15, 8))
         ttk.Label(form, textvariable=status, style="Body.TLabel", wraplength=680).pack(anchor="w")
@@ -461,10 +475,14 @@ class SarevatGui(tk.Tk):
         return f"No se pudo conectar: {error}"
 
     def _show_facts(self, facts: Any) -> None:
-        details = ttk.Frame(self.content, style="App.TFrame")
+        details = ttk.Frame(self.content, style="Card.TFrame", padding=(18, 15))
         details.pack(anchor="w", fill="x", pady=(16, 0))
         ttk.Label(
-            details, text="Estado descubierto", style="Body.TLabel", font=("Segoe UI", 10, "bold")
+            details,
+            text="Equipo descubierto",
+            background="#ffffff",
+            foreground="#102a43",
+            font=("Segoe UI", 11, "bold"),
         ).pack(anchor="w")
         for label, value in (
             ("Hostname", facts.hostname),
@@ -472,7 +490,9 @@ class SarevatGui(tk.Tk):
             ("Version", facts.version),
             ("Serial", facts.serial),
         ):
-            ttk.Label(details, text=f"{label}: {value}", style="Body.TLabel").pack(anchor="w", pady=1)
+            ttk.Label(
+                details, text=f"{label}: {value}", background="#ffffff", foreground="#526777"
+            ).pack(anchor="w", pady=1)
 
     def _device_tools_page(self) -> None:
         if not self.session:

@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 10:20:00 -04:00
+
+- Se rediseñó la vista de conexión y el resumen de descubrimiento de la GUI de escritorio con tarjetas y mensajes explícitos sobre el uso temporal de secretos.
+- Motivo: mejorar la configuración de equipos nuevos sin cambiar la autenticación local SSH/serial, el descubrimiento ni la política de no persistir contraseñas.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 10:00:00 -04:00
 
 - Se modernizó el shell de escritorio de la GUI: navegación lateral, panel de operaciones y estilo visual inspirado en el prototipo, conservando las páginas y el motor local existentes.
