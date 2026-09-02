@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 09:00:00 -04:00
+
+- Se añadió el cliente local `sarevat.agent_client`, que obtiene trabajos autenticados de la GUI web y los ejecuta mediante `agent_runtime` y el motor 7.0. Resuelve contraseñas y enable secret exclusivamente desde variables locales por referencia de vault.
+- Motivo: reemplazar el agente provisional basado en comandos de lectura fijos por el ejecutor validado de Sarevat, manteniendo HTTPS como único puente con la GUI.
+- Archivos afectados: `sarevat/agent_client.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación, Ruff, Bandit, `git diff --check` y 168 pruebas con `pytest -q` correctas; no se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 08:35:40 -04:00
 
 - Se extendió el adaptador de agente para conservar los constructores originales de configuración inicial, IPv4 por interfaz, observabilidad por sitio, SNMPv3, AAA local y endurecimiento. AAA exige `CONSOLA_LISTA` para construir el plan y `AAA_APLICAR` solamente al aplicarlo.
