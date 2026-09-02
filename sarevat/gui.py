@@ -1349,31 +1349,41 @@ class SarevatGui(tk.Tk):
 
     def _inventory_page(self) -> None:
         self._page_header(
-            "Inventario y perfiles",
-            "Organiza los equipos guardados y vuelve a conectarte sin guardar contrasenas.",
+            "Equipos e inventario",
+            "Organiza perfiles locales, grupos, borradores y lotes sin guardar contraseñas.",
         )
-        options = (
-            ("1)", "Ver equipos guardados", self._show_profiles),
-            ("2)", "Guardar nuevo perfil", self._new_profile),
-            ("3)", "Conectar usando un perfil", self._choose_profile_to_connect),
-            ("4)", "Eliminar un perfil", self._choose_profile_to_delete),
-            ("5)", "Ver borradores seguros", self._show_drafts),
-            ("6)", "Ver equipos de un grupo", self._show_group),
-            ("7)", "Preparar lote gradual por grupo\n(sin ejecutar)", self._prepare_batch),
-            ("8)", "Ver historial de lotes", self._show_batch_history),
+        groups = (
+            (
+                "Perfiles de equipos",
+                (
+                    ("Ver equipos guardados", self._show_profiles),
+                    ("Guardar nuevo perfil", self._new_profile),
+                    ("Conectar usando un perfil", self._choose_profile_to_connect),
+                    ("Eliminar un perfil", self._choose_profile_to_delete),
+                ),
+            ),
+            (
+                "Planificación y evidencia",
+                (
+                    ("Ver borradores seguros", self._show_drafts),
+                    ("Ver equipos de un grupo", self._show_group),
+                    ("Preparar lote gradual", self._prepare_batch),
+                    ("Ver historial de lotes", self._show_batch_history),
+                ),
+            ),
         )
         grid = ttk.Frame(self.content, style="App.TFrame")
         grid.pack(fill="x", anchor="w")
         for column in range(2):
             grid.columnconfigure(column, weight=1)
-        for index, (number, label, action) in enumerate(options):
-            ttk.Button(grid, text=f"{number}   {label}", command=action).grid(
-                row=index // 2,
-                column=index % 2,
-                sticky="ew",
-                padx=(0, 10) if index % 2 == 0 else (0, 0),
-                pady=4,
-            )
+        for index, (title, options) in enumerate(groups):
+            card = ttk.Frame(grid, style="Card.TFrame", padding=(18, 16))
+            card.grid(row=0, column=index, sticky="nsew", padx=(0, 12) if index == 0 else 0)
+            ttk.Label(
+                card, text=title, background="#ffffff", foreground="#102a43", font=("Segoe UI", 11, "bold")
+            ).pack(anchor="w", pady=(0, 8))
+            for label, action in options:
+                ttk.Button(card, text=label, command=action).pack(fill="x", pady=2)
         ttk.Label(
             self.content,
             text=(

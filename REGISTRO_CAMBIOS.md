@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 11:40:00 -04:00
+
+- Se reorganizó la entrada de inventario en perfiles de equipos y planificación/evidencia, preservando grupos, borradores, lotes e historial local.
+- Motivo: mejorar la navegación de la GUI de escritorio sin cambiar el formato local del inventario ni almacenar secretos.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 11:20:00 -04:00
 
 - Se actualizó la presentación del escáner IPv4 con un panel visible de control de alcance y las dos confirmaciones requeridas antes de iniciar.
