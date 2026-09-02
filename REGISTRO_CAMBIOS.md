@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 13:00:00 -04:00
+
+- Se retiraron los clientes y adaptadores experimentales de agente HTTPS que se habían añadido durante una exploración web previa.
+- Motivo: mantener `Mods-GUI` enfocada únicamente en la aplicación local de escritorio y evitar componentes no integrados en su interfaz.
+- Archivos afectados: `sarevat/agent_runtime.py`, `sarevat/agent_client.py`, `tests/test_agent_runtime.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: no quedaron referencias a los componentes retirados; 163 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 12:40:00 -04:00
 
 - Se actualizó el punto de entrada y la guía para identificar la GUI como una aplicación local de escritorio, sin navegador ni servidor web.
