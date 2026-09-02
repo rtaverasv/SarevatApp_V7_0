@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 13:40:00 -04:00
+
+- Se realizó una comprobación visual de arranque de la GUI local modernizada y de su panel principal de operaciones.
+- Motivo: confirmar que la migración visual inicia como aplicación de escritorio sin depender de navegador, servidor ni conexión Cisco.
+- Archivos afectados: `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: la ventana abrió con navegación lateral, tarjetas y accesos principales visibles; no se conectaron equipos ni se ejecutaron cambios.
+
 ### 2026-09-02 13:20:00 -04:00
 
 - Se modernizó la vista previa de planes Cisco con una jerarquía visual para dry-run, avisos y comandos redactados antes de habilitar la aplicación.
