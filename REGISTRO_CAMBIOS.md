@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 12:22:12 -04:00
+
+- Se incorporó a la GUI la exportación local de resultados VLSM con una salida JSON y otra CSV fechadas, disponibles al calcular subredes válidas.
+- Motivo: recuperar en la interfaz de escritorio la capacidad de exportación del flujo clásico sin añadir servicios web ni modificar equipos de red.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación y 164 pruebas con `pytest -q` pasaron; se corrigieron observaciones de estilo antes de la comprobación final. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 14:40:00 -04:00
 
 - Se añadió un acceso persistente en la barra lateral a las herramientas del equipo mientras una sesión SSH o serial está abierta; se habilita al conectar y se deshabilita al desconectar.

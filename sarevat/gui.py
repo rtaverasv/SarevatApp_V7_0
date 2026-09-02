@@ -47,7 +47,14 @@ from sarevat.scanner import (
 )
 from sarevat.security import dangerous_reasons, find_ios_errors, plan_dangerous_reasons, redact_text
 from sarevat.validators import ValidationError, validate_ipv4, validate_ipv4_network
-from sarevat.vlsm import SubnetRequest, automatic_gateway_policy, calculate_vlsm
+from sarevat.vlsm import (
+    SubnetRequest,
+    VLSMPlan,
+    automatic_gateway_policy,
+    calculate_vlsm,
+    export_plan_csv,
+    export_plan_json,
+)
 
 
 def build_connection_params(
@@ -117,6 +124,20 @@ def network_summary(network_text: str) -> dict[str, str]:
         "Gateway automatico": gateway,
         "Broadcast": str(network.broadcast_address),
     }
+
+
+def export_vlsm_outputs(
+    plan: VLSMPlan,
+    reports_directory: Path,
+    *,
+    stamp: str | None = None,
+) -> tuple[Path, Path]:
+    """Exporta un plan VLSM localmente en formatos interoperables con nombres únicos."""
+    suffix = stamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    return (
+        export_plan_json(plan, reports_directory / f"vlsm_{suffix}.json"),
+        export_plan_csv(plan, reports_directory / f"vlsm_{suffix}.csv"),
+    )
 
 
 def profile_connection_target(profile: ConnectionProfile | None) -> str:
@@ -1131,6 +1152,7 @@ class SarevatGui(tk.Tk):
         use_subnets, count = tk.StringVar(value="No"), tk.StringVar(value="1")
         rows: list[tuple[tk.StringVar, tk.StringVar, tk.StringVar]] = []
         allocations: list[Any] = []
+        current_plan: VLSMPlan | None = None
         ttk.Label(form, text="Introducir Red Base", style="Body.TLabel").pack(anchor="w")
         ttk.Entry(form, textvariable=base).pack(fill="x", pady=(3, 10))
         ttk.Label(form, text="Excluir IP", style="Body.TLabel").pack(anchor="w")
@@ -1192,10 +1214,12 @@ class SarevatGui(tk.Tk):
             subnets_frame.columnconfigure(1, weight=1)
 
         def calculate() -> None:
+            nonlocal current_plan
             try:
                 for child in results.winfo_children():
                     child.destroy()
                 allocations.clear()
+                current_plan = None
                 if use_subnets.get() == "No":
                     values = network_summary(base.get().strip())
                     if excluded.get().strip():
@@ -1214,20 +1238,23 @@ class SarevatGui(tk.Tk):
                         for name, hosts, kind in rows
                     ]
                     reserved = tuple(item.strip() for item in excluded.get().split(",") if item.strip())
-                    plan = calculate_vlsm(base.get().strip(), requests, reserved=reserved)
-                    allocations.extend(plan.allocations)
-                    lines = [f"Red base: {plan.base_network}"]
+                    current_plan = calculate_vlsm(base.get().strip(), requests, reserved=reserved)
+                    allocations.extend(current_plan.allocations)
+                    lines = [f"Red base: {current_plan.base_network}"]
                     lines.extend(
                         f"{item.name}: {item.network} | gateway: {item.gateway or 'No aplica'} | "
                         f"broadcast: {item.broadcast}"
-                        for item in plan.allocations
+                        for item in current_plan.allocations
                     )
                 results.pack(fill="x", pady=(14, 0))
                 ttk.Label(results, text="Resultado validado", style="Title.TLabel").pack(anchor="w")
                 if allocations:
                     ttk.Label(
                         results,
-                        text=f"Red base: {plan.base_network} · {len(allocations)} asignación(es)",
+                        text=(
+                            f"Red base: {current_plan.base_network} · "
+                            f"{len(allocations)} asignación(es)"
+                        ),
                         style="Body.TLabel",
                     ).pack(anchor="w", pady=(0, 8))
                     for allocation in allocations:
@@ -1255,6 +1282,27 @@ class SarevatGui(tk.Tk):
                                 text="Preparar IPv4 para esta interfaz",
                                 command=lambda item=allocation: self._prepare_vlsm_interface(item),
                             ).pack(anchor="w")
+                    plan_to_export = current_plan
+
+                    def export_current_plan() -> None:
+                        try:
+                            json_path, csv_path = export_vlsm_outputs(
+                                plan_to_export, self.runtime / "reports"
+                            )
+                        except OSError as exc:
+                            messagebox.showwarning("Exportación VLSM", str(exc), parent=self)
+                            return
+                        messagebox.showinfo(
+                            "Exportación VLSM",
+                            f"Resultados guardados localmente:\n{json_path.name}\n{csv_path.name}",
+                            parent=self,
+                        )
+
+                    ttk.Button(
+                        results,
+                        text="Exportar resultados JSON y CSV",
+                        command=export_current_plan,
+                    ).pack(anchor="w", pady=(8, 0))
                 else:
                     ttk.Label(results, text="\n".join(lines), style="Body.TLabel", justify="left").pack(
                         anchor="w"

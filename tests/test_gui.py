@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from sarevat.gui import build_connection_params, network_summary, profile_connection_target
+from sarevat.gui import (
+    build_connection_params,
+    export_vlsm_outputs,
+    network_summary,
+    profile_connection_target,
+)
 from sarevat.inventory import ConnectionProfile
 from sarevat.models import DeviceKind
 from sarevat.validators import ValidationError
+from sarevat.vlsm import SubnetRequest, automatic_gateway_policy, calculate_vlsm
 
 
 def test_gui_ssh_connection_params_are_validated() -> None:
@@ -45,3 +51,17 @@ def test_gui_connection_target_does_not_require_a_saved_profile() -> None:
         profile_connection_target(ssh_profile) == "192.0.2.10"
     )
     assert profile_connection_target(serial_profile) == "COM3"
+
+
+def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:
+    plan = calculate_vlsm(
+        "192.0.2.0/24",
+        [SubnetRequest("Usuarios", 30, gateway_policy=automatic_gateway_policy("lan"))],
+    )
+
+    json_path, csv_path = export_vlsm_outputs(plan, tmp_path, stamp="20260902_122212")
+
+    assert json_path.name == "vlsm_20260902_122212.json"
+    assert csv_path.name == "vlsm_20260902_122212.csv"
+    assert json_path.is_file()
+    assert csv_path.is_file()
