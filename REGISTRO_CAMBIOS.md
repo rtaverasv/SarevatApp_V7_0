@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 11:20:00 -04:00
+
+- Se actualizó la presentación del escáner IPv4 con un panel visible de control de alcance y las dos confirmaciones requeridas antes de iniciar.
+- Motivo: hacer explícita la autorización operativa sin modificar límites, políticas, escaneo ni exportación de resultados.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 11:00:00 -04:00
 
 - Se modernizó VLSM en la GUI de escritorio: las asignaciones aparecen en tarjetas separadas con red, gateway y broadcast, y cada interfaz se prepara de forma individual.

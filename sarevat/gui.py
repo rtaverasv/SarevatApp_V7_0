@@ -1198,8 +1198,24 @@ class SarevatGui(tk.Tk):
 
     def _scan_page(self) -> None:
         self._page_header(
-            "Escanear IPv4", "Disponible solo para redes que administras o tienes permiso de evaluar."
+            "Escáner IPv4 autorizado",
+            "Disponible solo para redes que administras o tienes permiso explícito de evaluar.",
         )
+        safety = ttk.Frame(self.content, style="Card.TFrame", padding=(16, 13))
+        safety.pack(fill="x", pady=(0, 14))
+        ttk.Label(
+            safety,
+            text="Control de alcance",
+            background="#ffffff",
+            foreground="#102a43",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            safety,
+            text="Escribe AUTORIZO, revisa el objetivo y confirma una segunda vez antes de iniciar.",
+            background="#ffffff",
+            foreground="#526777",
+        ).pack(anchor="w", pady=(3, 0))
         target_value = tk.StringVar()
         mode = tk.StringVar(value="Ping sweep IPv4")
         authorization = tk.StringVar()
