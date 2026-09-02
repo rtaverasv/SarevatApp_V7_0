@@ -1,6 +1,7 @@
 import pytest
 
-from sarevat.agent_runtime import AgentJobError, _connection_params
+from sarevat.agent_runtime import AgentJobError, _build_plan, _connection_params
+from sarevat.models import DeviceFacts, DeviceKind
 
 
 def test_ssh_requires_temporary_credentials() -> None:
@@ -22,3 +23,27 @@ def test_serial_rejects_invalid_baudrate() -> None:
 def test_unknown_transport_is_rejected() -> None:
     with pytest.raises(AgentJobError):
         _connection_params({"transport": "telnet"}, {})
+
+
+def test_special_service_forms_use_original_plan_builders() -> None:
+    facts = DeviceFacts(running_config="username rescue privilege 15 secret 9 hash")
+    initial = _build_plan(
+        "initial_setup",
+        {
+            "hostname": "r1",
+            "domain": "example.test",
+            "username": "admin",
+            "password": "Secret123",
+            "rsa_bits": 2048,
+        },
+        facts,
+        DeviceKind.ROUTER,
+    )
+    aaa = _build_plan(
+        "aaa_local",
+        {"username": "rescue", "console": "CONSOLA_LISTA"},
+        facts,
+        DeviceKind.ROUTER,
+    )
+    assert initial.service == "initial_setup"
+    assert aaa.service == "aaa_local"

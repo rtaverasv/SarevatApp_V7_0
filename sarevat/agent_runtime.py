@@ -15,7 +15,15 @@ from netmiko import ConnectHandler
 
 from sarevat.cisco.discovery import discover_device
 from sarevat.cisco.executor import CiscoExecutor
-from sarevat.cisco.services import build_service_plan
+from sarevat.cisco.services import (
+    build_aaa_local_plan,
+    build_basic_hardening_plan,
+    build_initial_setup_plan,
+    build_interface_ip_plan,
+    build_service_plan,
+    build_site_observability_plan,
+    build_snmpv3_plan,
+)
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import DeviceKind
 from sarevat.security import redact_text
@@ -92,6 +100,37 @@ def _report_payload(report: Any) -> dict[str, Any]:
     }
 
 
+def _build_plan(service: str, data: dict[str, Any], facts: Any, device_kind: DeviceKind) -> Any:
+    """Enruta únicamente formularios equivalentes a los de la GUI 7.0."""
+    if service == "initial_setup":
+        return build_initial_setup_plan(data)
+    if service == "site_observability":
+        return build_site_observability_plan(
+            str(data.get("role", "sucursal")), str(data.get("ntp", "")), str(data.get("syslog", ""))
+        )
+    if service == "snmpv3":
+        return build_snmpv3_plan(
+            str(data.get("group", "")),
+            str(data.get("username", "")),
+            str(data.get("auth", "")),
+            str(data.get("privacy", "")),
+        )
+    if service == "aaa_local":
+        return build_aaa_local_plan(
+            str(data.get("username", "")), facts, data.get("console") == "CONSOLA_LISTA"
+        )
+    if service == "basic_hardening":
+        return build_basic_hardening_plan(facts)
+    if service == "interface_ipv4":
+        return build_interface_ip_plan(
+            str(data.get("interface", "")),
+            str(data.get("address", "")),
+            str(data.get("netmask", "")),
+            facts,
+        )
+    return build_service_plan(service, data, facts, device_kind)
+
+
 def execute_agent_job(job: dict[str, Any], credentials: dict[str, str], runtime: Path) -> dict[str, Any]:
     """Ejecuta un trabajo permitido usando los validadores y executor 7.0.
 
@@ -127,10 +166,12 @@ def execute_agent_job(job: dict[str, Any], credentials: dict[str, str], runtime:
                 device_kind = DeviceKind(str(job.get("deviceKind", "")))
             except ValueError as exc:
                 raise AgentJobError("El tipo de equipo debe ser router o switch.") from exc
-            plan = build_service_plan(service, data, facts, device_kind)
+            plan = _build_plan(service, data, facts, device_kind)
             apply = bool(job.get("apply", False))
             if apply and not bool(job.get("confirmed", False)):
                 raise AgentJobError("La aplicación requiere confirmación explícita.")
+            if apply and plan.service == "aaa_local" and job.get("aaaConfirmation") != "AAA_APLICAR":
+                raise AgentJobError("AAA requiere la confirmación exacta AAA_APLICAR.")
             executor = CiscoExecutor(connection, audit=audit, backup_directory=runtime / "backups")
             report = executor.execute(
                 plan,

@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 08:35:40 -04:00
+
+- Se extendió el adaptador de agente para conservar los constructores originales de configuración inicial, IPv4 por interfaz, observabilidad por sitio, SNMPv3, AAA local y endurecimiento. AAA exige `CONSOLA_LISTA` para construir el plan y `AAA_APLICAR` solamente al aplicarlo.
+- Motivo: trasladar todos los formularios de cambio seguro de la GUI 7.0 sin generar comandos IOS libres ni perder las confirmaciones reforzadas.
+- Archivos afectados: `sarevat/agent_runtime.py`, `tests/test_agent_runtime.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 06:00:00 -04:00
 
 - Se añadió `sarevat.agent_runtime`, un adaptador no interactivo para la futura GUI web. Reutiliza el descubrimiento Cisco, los validadores y `CiscoExecutor` existentes para trabajos estructurados de descubrimiento, prueba SSH y servicios. Rechaza transportes o tipos de trabajo no permitidos y no acepta comandos IOS libres.
