@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 14:20:00 -04:00
+
+- Se unificó la presentación de evidencia local en tarjetas para cumplimiento, diferencias, referencias, borradores, grupos y lotes.
+- Motivo: completar varias pantallas de operación de la GUI de escritorio sin cambiar los datos, reportes o comportamientos de los módulos subyacentes.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 163 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 14:00:00 -04:00
 
 - Se modernizó la consola libre con un formulario de comando y una salida separada, conservando la auditoría y las confirmaciones de comandos de alto impacto.

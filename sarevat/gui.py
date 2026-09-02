@@ -1643,14 +1643,18 @@ class SarevatGui(tk.Tk):
 
     def _show_records(self, title: str, lines: list[str], empty: str) -> None:
         self._clear()
-        self._page_header(title, "")
-        ttk.Label(
-            self.content,
-            text="\n".join(lines) if lines else empty,
-            style="Body.TLabel",
-            justify="left",
-            wraplength=680,
-        ).pack(anchor="w")
+        self._page_header(title, "Evidencia local generada por SarevatApp.")
+        if not lines:
+            ttk.Label(self.content, text=empty, style="Body.TLabel", wraplength=680).pack(anchor="w")
+            return
+        records = ttk.Frame(self.content, style="App.TFrame")
+        records.pack(fill="x")
+        for line in lines:
+            card = ttk.Frame(records, style="Card.TFrame", padding=(14, 11))
+            card.pack(fill="x", pady=3)
+            ttk.Label(
+                card, text=line, background="#ffffff", foreground="#526777", justify="left", wraplength=740
+            ).pack(anchor="w")
 
     def _run_worker(self, work: Callable[[], object], finish: Callable[[object], None]) -> None:
         def target() -> None:
