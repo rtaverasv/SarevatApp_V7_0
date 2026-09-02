@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 11:00:00 -04:00
+
+- Se modernizó VLSM en la GUI de escritorio: las asignaciones aparecen en tarjetas separadas con red, gateway y broadcast, y cada interfaz se prepara de forma individual.
+- Motivo: evitar resultados mezclados y conservar el control antes de asociar una IPv4 calculada a un equipo conectado.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 168 pruebas pasaron con `pytest -q`; Ruff, Bandit y `git diff --check` pasaron. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 10:40:00 -04:00
 
 - Se reorganizaron las catorce herramientas del equipo conectado en tarjetas de operación/configuración, seguridad/observabilidad y evidencia/mantenimiento.

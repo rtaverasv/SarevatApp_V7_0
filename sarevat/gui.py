@@ -1027,8 +1027,14 @@ class SarevatGui(tk.Tk):
         )
 
     def _vlsm_page(self) -> None:
-        self._page_header("Planificar VLSM IPv4", "Calcula las subredes antes de configurar un equipo.")
-        form = ttk.Frame(self.content, style="App.TFrame")
+        self._page_header(
+            "Planificador VLSM IPv4",
+            (
+                "Cada solicitud se calcula como una red separada; valida el resultado antes de "
+                "preparar interfaces."
+            ),
+        )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
         form.pack(fill="x", anchor="w")
         base, excluded = tk.StringVar(), tk.StringVar()
         use_subnets, count = tk.StringVar(value="No"), tk.StringVar(value="1")
@@ -1042,8 +1048,8 @@ class SarevatGui(tk.Tk):
         ttk.Label(form, text="Trabajar con subredes", style="Body.TLabel").pack(anchor="w")
         choice = ttk.Combobox(form, textvariable=use_subnets, values=("No", "Si"), state="readonly")
         choice.pack(fill="x", pady=(3, 10))
-        subnets_frame = ttk.Frame(form, style="App.TFrame")
-        results = ttk.Frame(form, style="App.TFrame")
+        subnets_frame = ttk.Frame(form, style="Card.TFrame")
+        results = ttk.Frame(self.content, style="App.TFrame")
 
         def render_subnets(*_: object) -> None:
             for child in subnets_frame.winfo_children():
@@ -1126,12 +1132,42 @@ class SarevatGui(tk.Tk):
                         for item in plan.allocations
                     )
                 results.pack(fill="x", pady=(14, 0))
-                ttk.Label(results, text="Resultado", style="Body.TLabel", font=("Segoe UI", 10, "bold")).pack(
-                    anchor="w"
-                )
-                ttk.Label(results, text="\n".join(lines), style="Body.TLabel", justify="left").pack(
-                    anchor="w"
-                )
+                ttk.Label(results, text="Resultado validado", style="Title.TLabel").pack(anchor="w")
+                if allocations:
+                    ttk.Label(
+                        results,
+                        text=f"Red base: {plan.base_network} · {len(allocations)} asignación(es)",
+                        style="Body.TLabel",
+                    ).pack(anchor="w", pady=(0, 8))
+                    for allocation in allocations:
+                        card = ttk.Frame(results, style="Card.TFrame", padding=(14, 12))
+                        card.pack(fill="x", pady=3)
+                        ttk.Label(
+                            card,
+                            text=allocation.name,
+                            background="#ffffff",
+                            foreground="#102a43",
+                            font=("Segoe UI", 10, "bold"),
+                        ).pack(anchor="w")
+                        ttk.Label(
+                            card,
+                            text=(
+                                f"{allocation.network} · gateway: {allocation.gateway or 'No aplica'} · "
+                                f"broadcast: {allocation.broadcast}"
+                            ),
+                            background="#ffffff",
+                            foreground="#526777",
+                        ).pack(anchor="w", pady=(2, 6))
+                        if self.session:
+                            ttk.Button(
+                                card,
+                                text="Preparar IPv4 para esta interfaz",
+                                command=lambda item=allocation: self._prepare_vlsm_interface(item),
+                            ).pack(anchor="w")
+                else:
+                    ttk.Label(results, text="\n".join(lines), style="Body.TLabel", justify="left").pack(
+                        anchor="w"
+                    )
                 if allocations and self.session:
                     ttk.Label(
                         results,
@@ -1142,12 +1178,6 @@ class SarevatGui(tk.Tk):
                         style="Body.TLabel",
                         wraplength=680,
                     ).pack(anchor="w", pady=(10, 5))
-                    for allocation in allocations:
-                        ttk.Button(
-                            results,
-                            text=f"Preparar IPv4 para {allocation.name}",
-                            command=lambda item=allocation: self._prepare_vlsm_interface(item),
-                        ).pack(anchor="w", pady=2)
             except (ValidationError, ValueError) as exc:
                 messagebox.showwarning("Datos por corregir", str(exc), parent=self)
 
