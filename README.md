@@ -41,11 +41,12 @@ servidor web. Comparte el mismo motor que PowerShell, que sigue disponible como
 alternativa. Para abrirla:
 
 ```powershell
-.\.venv\Scripts\python.exe .\SarevatApp_GUI_alpha.py
+.\.venv\Scripts\python.exe .\SarevatApp_GUI.py
 ```
 
-La alpha conserva el orden del menú de PowerShell y permite usar sus funciones
-desde una ventana: conexión y descubrimiento, VLSM IPv4, escaneo autorizado,
+`SarevatApp_GUI_alpha.py` se conserva como lanzador compatible para instalaciones
+anteriores. La GUI organiza visualmente las funciones del menú de PowerShell y
+permite usar conexión y descubrimiento, VLSM IPv4, escaneo autorizado,
 inventario, perfiles y las catorce herramientas del equipo conectado. Al
 seleccionar consola serial, pide puerto y baudrate; si la línea de consola usa
 autenticación, las credenciales se solicitan solo para esa conexión.
@@ -63,6 +64,8 @@ rollback opcional. AAA exige también `CONSOLA_LISTA` y `AAA_APLICAR`.
 La consola libre, `write memory`, comparación, revisión, referencias y cambios
 desde la referencia también están disponibles. VLSM puede preparar la IPv4 de
 cada interfaz calculada, una por una, para que la revises antes de aplicarla.
+Los resultados de VLSM con subredes también pueden exportarse localmente en
+JSON y CSV dentro de `runtime/reports/`.
 
 La GUI conserva los mismos validadores y motores de planes de PowerShell. Debe
 validarse en un laboratorio o equipo Cisco autorizado antes de usar cambios en

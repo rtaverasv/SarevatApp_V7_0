@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-02 12:40:30 -04:00
+
+- Se añadió `SarevatApp_GUI.py` como lanzador estable de la aplicación gráfica local y se actualizó la guía de ejecución y exportación VLSM; el lanzador con sufijo `alpha` permanece compatible.
+- Motivo: ofrecer una entrada de escritorio clara para la GUI migrada sin romper instalaciones o accesos existentes.
+- Archivos afectados: `SarevatApp_GUI.py`, `README.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación y 164 pruebas con `pytest -q` pasaron; Ruff, Bandit y `git diff --check` se verifican en la comprobación final. No se realizaron conexiones Cisco reales.
+
 ### 2026-09-02 12:22:12 -04:00
 
 - Se incorporó a la GUI la exportación local de resultados VLSM con una salida JSON y otra CSV fechadas, disponibles al calcular subredes válidas.
