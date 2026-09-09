@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-09 16:55:00 -04:00
+
+- Se actualizó el roadmap con la fase prioritaria de bootstrap serial para equipo nuevo, sus entregables locales y la prueba de aceptación posterior en INFOTEP.
+- Motivo: orientar el siguiente desarrollo hacia la eliminación de la dependencia de PuTTY sin requerir el router durante la implementación ni habilitar cambios no validados.
+- Archivos afectados: `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: revisión documental y `git diff --check` aprobados. No se ejecutaron pruebas porque el cambio solo afecta documentación.
+
 ### 2026-09-09 16:40:00 -04:00
 
 - Se validaron visualmente la pantalla de conexión SSH y el planificador VLSM de la GUI integrada: acción principal legible, desplazamiento vertical, selector de máscara y elección de trabajo con subredes.

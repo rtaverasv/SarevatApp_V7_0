@@ -67,6 +67,26 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 6. Tras el laboratorio, empaquetar una versión de prueba `.exe` y validarla en
    una laptop limpia conservando el código fuente y la opción PowerShell.
 
+## Próximo desarrollo: asistente de equipo nuevo por serial
+
+Prioridad P0. El objetivo es preparar un router virgen desde SarevatApp sin
+depender de PuTTY, dejando la consola externa solo como mecanismo de
+recuperación. Se implementará en cuatro etapas:
+
+1. **Lógica y pruebas locales.** Validar COM, velocidad, interfaz, IPv4,
+   máscara, hostname, dominio, usuario y secretos temporales; generar un
+   `CommandPlan` redactado que incluya IP de gestión, RSA y SSH. No aplica
+   comandos a un equipo real.
+2. **Asistente visual.** Solicitar los datos en campos separados, permitir
+   `enable secret` aunque la consola no pida autenticación, mostrar la vista
+   previa y exigir confirmación antes de cualquier aplicación.
+3. **Verificación controlada.** Tras aplicar por serial, consultar estado de
+   interfaz, IP y disponibilidad SSH. La persistencia será una acción separada,
+   nunca automática.
+4. **Prueba de aceptación en INFOTEP.** Usar el Cisco 1841 identificado, sin
+   guardar configuración inicialmente; registrar versión IOS, prompts y
+   compatibilidad SSH antigua antes de habilitar el flujo para otros equipos.
+
 ## Criterio de salida para GUI estable
 
 La GUI podrá dejar de llamarse Alpha cuando complete, como mínimo, una prueba
