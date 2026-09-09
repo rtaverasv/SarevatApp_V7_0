@@ -249,8 +249,18 @@ class SarevatGui(tk.Tk):
             "Side.TButton", background="#102a43", foreground="#dce8f2", padding=(14, 11), anchor="w"
         )
         style.map("Side.TButton", background=[("active", "#1d4e67")])
-        style.configure("Primary.TButton", background="#197278", foreground="#ffffff", padding=(15, 10))
-        style.map("Primary.TButton", background=[("active", "#125c61")])
+        style.configure(
+            "Primary.TButton",
+            background="#197278",
+            foreground="#ffffff",
+            font=("Segoe UI", 10, "bold"),
+            padding=(15, 10),
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("disabled", "#8bb9bc"), ("active", "#125c61"), ("!disabled", "#197278")],
+            foreground=[("disabled", "#e8f2f3"), ("!disabled", "#ffffff")],
+        )
         style.configure("Back.TButton", background="#f6f8fb", foreground="#197278", padding=(0, 3))
         style.configure("Treeview", rowheight=28, font=("Segoe UI", 9))
         style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"))

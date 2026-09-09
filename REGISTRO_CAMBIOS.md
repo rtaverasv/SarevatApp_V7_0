@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-09 16:10:00 -04:00
+
+- Se corrigió el estilo del botón principal de la GUI para fijar de forma explícita el contraste del texto en los estados normal, activo y deshabilitado.
+- Motivo: en la vista de conexión SSH el botón se mostraba como una barra verde sin texto en el tema visual de Windows.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `167 passed` con `pytest -q`, Ruff, Bandit y `git diff --check` aprobados. La comprobación visual requiere reiniciar la ventana de la GUI para cargar el estilo actualizado.
+
 ### 2026-09-09 15:20:09 -04:00
 
 - Se integraron en una rama temporal las mejoras VLSM respaldadas con la GUI local modernizada: red y mascara separadas, validacion de filas, desplazamiento vertical y resultados tabulares; se conservaron los modulos VLSM y sus pruebas.
