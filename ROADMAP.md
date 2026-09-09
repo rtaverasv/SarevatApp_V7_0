@@ -87,6 +87,19 @@ recuperación. Se implementará en cuatro etapas:
    guardar configuración inicialmente; registrar versión IOS, prompts y
    compatibilidad SSH antigua antes de habilitar el flujo para otros equipos.
 
+### Fases detalladas de implementación
+
+| Fase | Alcance | Criterio de salida |
+|---|---|---|
+| 0. Definición segura | Fijar datos obligatorios, límites del flujo y la regla de que persistir configuración es opcional. | Contrato de entradas, resultados esperados y riesgos documentados. |
+| 1. Lógica de bootstrap | Validar COM, baudrate, interfaz, IPv4, máscara, hostname, dominio, usuario y secretos temporales; generar el `CommandPlan` redactado. | Pruebas unitarias cubren planes válidos, errores y ausencia de secretos en registros. |
+| 2. Ejecución serial segura | Reconocer prompts `Router>`, `Router#` y autenticación; permitir `enable secret` sin login de consola; detectar errores IOS y detenerse. | Simulaciones cubren consola abierta, autenticada y fallos IOS sin enviar comandos no previstos. |
+| 3. Asistente visual | Implementar flujo por pasos, campos separados, vista previa, dry-run, confirmación y cancelación. | Navegación y mensajes verificados visualmente sin ocultar ni persistir secretos. |
+| 4. Verificación y registro | Consultar estado de interfaz, IP y SSH; ofrecer registrar el perfil sin passwords. | El flujo termina en descubrimiento de solo lectura o informa un error accionable. |
+| 5. Pruebas locales completas | Ejecutar regresión, pruebas de integración simulada, Ruff, Bandit y revisión de cambios. | Suite completa aprobada antes de usar hardware. |
+| 6. Aceptación en INFOTEP | Probar el Cisco 1841 por serial sin persistencia, luego validar IP, SSH y descubrimiento desde SarevatApp. | Evidencia de comportamiento real, matriz IOS y diferencias documentadas. |
+| 7. Cierre y entrega | Actualizar guía, matriz de compatibilidad y evidencia; promover solo cambios validados en `Mods-GUI`. | Rama sincronizada, `Mods` intacta y respaldo retenido hasta confirmar estabilidad. |
+
 ## Criterio de salida para GUI estable
 
 La GUI podrá dejar de llamarse Alpha cuando complete, como mínimo, una prueba

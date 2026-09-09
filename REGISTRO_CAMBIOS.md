@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-09 18:45:56 -04:00
+
+- Se incorporó al roadmap el desglose de las fases 0 a 7 para el asistente serial de equipo nuevo, con alcance y criterio de salida por fase.
+- Motivo: convertir el objetivo de eliminar la dependencia de PuTTY en entregas verificables antes de la prueba física en INFOTEP.
+- Archivos afectados: `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: revisión documental y `git diff --check` aprobados. No se ejecutaron pruebas porque el cambio solo afecta documentación.
+
 ### 2026-09-09 16:55:00 -04:00
 
 - Se actualizó el roadmap con la fase prioritaria de bootstrap serial para equipo nuevo, sus entregables locales y la prueba de aceptación posterior en INFOTEP.
