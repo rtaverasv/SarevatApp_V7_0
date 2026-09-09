@@ -400,8 +400,25 @@ class SarevatGui(tk.Tk):
                 else "Las credenciales se usan una sola vez para descubrir el equipo y nunca se guardan."
             ),
         )
-        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
-        form.pack(anchor="w", fill="x")
+        viewport = ttk.Frame(self.content, style="App.TFrame")
+        viewport.pack(fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(viewport, orient="vertical")
+        canvas = tk.Canvas(viewport, background="#f6f8fb", highlightthickness=0)
+        scrollbar.configure(command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        form = ttk.Frame(canvas, style="Card.TFrame", padding=(22, 20))
+        form_window = canvas.create_window((0, 0), window=form, anchor="nw")
+
+        def update_scroll_region(_: tk.Event[tk.Misc]) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def resize_form(event: tk.Event[tk.Misc]) -> None:
+            canvas.itemconfigure(form_window, width=event.width)
+
+        form.bind("<Configure>", update_scroll_region)
+        canvas.bind("<Configure>", resize_form)
         ttk.Label(
             form,
             text="Conexión temporal",
@@ -440,6 +457,23 @@ class SarevatGui(tk.Tk):
         dynamic = ttk.Frame(form, style="Card.TFrame")
         dynamic.pack(fill="x")
         status = tk.StringVar(value="Listo para conectar y descubrir en modo lectura.")
+
+        def primary_action(parent: tk.Misc, text: str, command: Callable[[], None]) -> tk.Button:
+            return tk.Button(
+                parent,
+                text=text,
+                command=command,
+                background="#197278",
+                foreground="#ffffff",
+                activebackground="#125c61",
+                activeforeground="#ffffff",
+                disabledforeground="#e8f2f3",
+                font=("Segoe UI", 10, "bold"),
+                borderwidth=0,
+                highlightthickness=0,
+                padx=15,
+                pady=10,
+            )
 
         def render_fields(*_: object) -> None:
             for child in dynamic.winfo_children():
@@ -486,14 +520,14 @@ class SarevatGui(tk.Tk):
             password.set("")
             secret.set("")
             status.set("Conectando y consultando el estado del equipo...")
-            button.state(["disabled"])
+            button.configure(state="disabled")
             self._run_session_worker(
                 lambda: self._open_session(params, device_kind, profile_id),
                 lambda result: done(result, button, status),
             )
 
-        def done(result: object, button: ttk.Button, text: tk.StringVar) -> None:
-            button.state(["!disabled"])
+        def done(result: object, button: tk.Button, text: tk.StringVar) -> None:
+            button.configure(state="normal")
             if isinstance(result, Exception):
                 text.set(self._connection_error(result))
                 return
@@ -507,18 +541,15 @@ class SarevatGui(tk.Tk):
                 f"Conectado a {facts.hostname}. La sesion permanece abierta hasta que pulses Desconectar."
             )
             self._show_facts(facts)
-            ttk.Button(
+            primary_action(
                 form,
-                text="Abrir herramientas del equipo conectado",
-                style="Primary.TButton",
-                command=self._device_tools_page,
+                "Abrir herramientas del equipo conectado",
+                self._device_tools_page,
             ).pack(fill="x", pady=(12, 0))
 
         mode_box.bind("<<ComboboxSelected>>", render_fields)
         render_fields()
-        button = ttk.Button(
-            form, text="Conectar y descubrir", style="Primary.TButton", command=connect
-        )
+        button = primary_action(form, "Conectar y descubrir", connect)
         button.pack(fill="x", pady=(15, 8))
         ttk.Label(form, textvariable=status, style="Body.TLabel", wraplength=680).pack(anchor="w")
 

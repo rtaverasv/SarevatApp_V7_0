@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-09 16:25:00 -04:00
+
+- Se añadió desplazamiento vertical a la pantalla de conexión y se reemplazó su botón de acción por un control Tk nativo con texto, colores y estados definidos explícitamente.
+- Motivo: el botón ttk se mostraba sin texto pese a tener ancho suficiente en el tema de Windows; el desplazamiento mantiene accesibles todos los campos en pantallas bajas.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `167 passed` con `pytest -q`, Ruff, Bandit y `git diff --check` aprobados. La revisión visual requiere reiniciar la GUI para cargar los nuevos controles.
+
 ### 2026-09-09 16:10:00 -04:00
 
 - Se corrigió el estilo del botón principal de la GUI para fijar de forma explícita el contraste del texto en los estados normal, activo y deshabilitado.
