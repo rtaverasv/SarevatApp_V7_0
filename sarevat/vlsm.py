@@ -119,7 +119,20 @@ def _find_available(
     if prefix < base.prefixlen:
         raise ValidationError(f"Un bloque /{prefix} no cabe dentro de {base}.")
     for candidate in base.subnets(new_prefix=prefix):
-        if not any(candidate.overlaps(item) for item in occupied):
+        overlaps_usable_address = any(
+            candidate.overlaps(item)
+            and not (
+                # Las exclusiones escritas como una IPv4 se guardan como /32.
+                # En redes /30 o mayores, red y broadcast no son utilizables, por
+                # lo que excluir una de esas direcciones no debe desplazar el
+                # bloque VLSM ni invertir la asociacion red/gateway mostrada.
+                item.prefixlen == 32
+                and candidate.prefixlen <= 30
+                and item.network_address in {candidate.network_address, candidate.broadcast_address}
+            )
+            for item in occupied
+        )
+        if not overlaps_usable_address:
             return candidate
     raise ValidationError(f"No queda espacio alineado para un bloque /{prefix} dentro de {base}.")
 

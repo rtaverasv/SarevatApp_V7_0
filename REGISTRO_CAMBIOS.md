@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-01 16:43:22 -04:00
+
+- Se actualizó la pantalla VLSM de la GUI Alpha: Red Base ahora recibe la IPv4 y la máscara CIDR en controles separados; se incorporó una barra de desplazamiento vertical para acceder a formularios extensos; y los resultados de subredes se presentan en una tabla neutra con nombre, red, máscara, gateway y broadcast, sin alterar la paleta existente.
+- Se corrigó el tratamiento de una IP excluida que coincide con la dirección de red o broadcast: al no ser una dirección utilizable en redes /30 o mayores, ya no desplaza el bloque VLSM ni la asociación esperada entre red y gateway. También se añadieron mensajes breves y específicos para Red Base, máscara, hosts y nombres de subred faltantes.
+- Motivo: aplicar las correcciones solicitadas en el documento de revisión de VLSM, mejorar la legibilidad del resultado y evitar que una exclusión de broadcast muestre asignaciones aparentemente invertidas.
+- Archivos afectados: `sarevat/gui.py`, `sarevat/vlsm.py`, `tests/test_gui.py`, `tests/test_vlsm.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: suite completa aprobada (`166 passed`), Ruff aprobado, Bandit aprobado y `git diff --check` sin errores. La comprobación visual confirmó el selector de máscara y la barra de desplazamiento; la interacción visual adicional expiró antes de completar una entrada de prueba.
+
 ### 2026-09-01 06:44:13 -04:00
 
 - Se actualizó el roadmap para reflejar la versión integrada en `main`: GUI Alpha funcional, conexión SSH/serial, VLSM guiado, inventario, planes de seguridad, respaldos cifrados, reportes, lotes preparados, CI y las 163 pruebas locales.

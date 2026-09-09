@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from sarevat.gui import build_connection_params, network_summary, profile_connection_target
+from sarevat.gui import (
+    build_connection_params,
+    build_vlsm_base_network,
+    build_vlsm_requests,
+    network_summary,
+    profile_connection_target,
+)
 from sarevat.inventory import ConnectionProfile
 from sarevat.models import DeviceKind
 from sarevat.validators import ValidationError
@@ -35,6 +41,17 @@ def test_gui_network_summary_uses_automatic_gateway() -> None:
     summary = network_summary("192.168.10.0/27")
     assert summary["Gateway automatico"] == "192.168.10.1"
     assert summary["Broadcast"] == "192.168.10.31"
+
+
+def test_gui_vlsm_base_uses_the_separate_mask_selector() -> None:
+    assert build_vlsm_base_network("10.0.0.0", "/24") == "10.0.0.0/24"
+    with pytest.raises(ValidationError, match="mascara aparte"):
+        build_vlsm_base_network("10.0.0.0/24", "/24")
+
+
+def test_gui_vlsm_rows_report_a_missing_name_clearly() -> None:
+    with pytest.raises(ValidationError, match="Subred 1: falta el nombre"):
+        build_vlsm_requests([("", "10", "lan")])
 
 
 def test_gui_connection_target_does_not_require_a_saved_profile() -> None:
