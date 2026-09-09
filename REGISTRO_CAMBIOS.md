@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-09 16:40:00 -04:00
+
+- Se validaron visualmente la pantalla de conexión SSH y el planificador VLSM de la GUI integrada: acción principal legible, desplazamiento vertical, selector de máscara y elección de trabajo con subredes.
+- Motivo: confirmar en Windows que la integración conserva los flujos de conexión y VLSM antes de promover la rama visual.
+- Archivos afectados: `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: validación visual aprobada por el usuario; previamente `167 passed` con `pytest -q`, Ruff, Bandit y `git diff --check` aprobados. No se realizaron cambios Cisco desde la GUI durante esta comprobación.
+
 ### 2026-09-09 16:25:00 -04:00
 
 - Se añadió desplazamiento vertical a la pantalla de conexión y se reemplazó su botón de acción por un control Tk nativo con texto, colores y estados definidos explícitamente.
