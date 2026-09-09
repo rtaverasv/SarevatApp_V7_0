@@ -44,6 +44,18 @@ def test_reserved_blocks_are_skipped() -> None:
     assert plan.allocations[0].network == "172.16.0.64/26"
 
 
+def test_excluded_broadcast_does_not_shift_the_network_or_gateway() -> None:
+    plan = calculate_vlsm(
+        "10.0.0.0/24",
+        [SubnetRequest("Primera", 120), SubnetRequest("Segunda", 50)],
+        reserved=("10.0.0.127",),
+    )
+    assert [(item.network, item.gateway) for item in plan.allocations] == [
+        ("10.0.0.0/25", "10.0.0.1"),
+        ("10.0.0.128/26", "10.0.0.129"),
+    ]
+
+
 def test_overflow_and_external_exclusion_fail() -> None:
     with pytest.raises(ValidationError):
         calculate_vlsm(

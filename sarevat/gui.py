@@ -56,6 +56,54 @@ from sarevat.vlsm import (
     export_plan_json,
 )
 
+VLSM_MASK_OPTIONS = tuple(f"/{prefix}" for prefix in range(33))
+
+
+def build_vlsm_base_network(address: str, prefix: str) -> str:
+    """Combina los controles de red y mascara en una red IPv4 valida."""
+    value = address.strip()
+    if not value:
+        raise ValidationError("Indica la Red Base.")
+    if "/" in value:
+        raise ValidationError("En Red Base escribe solo la IPv4; elige la mascara aparte.")
+    normalized_address = str(validate_ipv4(value))
+    normalized_prefix = prefix.strip().removeprefix("/")
+    if not normalized_prefix.isdecimal() or not 0 <= int(normalized_prefix) <= 32:
+        raise ValidationError("Selecciona una mascara IPv4 valida.")
+    try:
+        return str(validate_ipv4_network(f"{normalized_address}/{normalized_prefix}"))
+    except ValidationError as exc:
+        raise ValidationError(
+            "La Red Base debe coincidir con el inicio de la mascara seleccionada."
+        ) from exc
+
+
+def build_vlsm_requests(rows: list[tuple[str, str, str]]) -> list[SubnetRequest]:
+    """Valida las filas VLSM con mensajes breves y accionables para la GUI."""
+    requests: list[SubnetRequest] = []
+    for index, (name, hosts, kind) in enumerate(rows, start=1):
+        normalized_name = name.strip()
+        if not normalized_name:
+            raise ValidationError(f"Subred {index}: falta el nombre.")
+        normalized_hosts = hosts.strip()
+        if not normalized_hosts:
+            raise ValidationError(f"Subred {index}: indica la cantidad de hosts.")
+        try:
+            requested_hosts = int(normalized_hosts)
+        except ValueError as exc:
+            raise ValidationError(f"Subred {index}: hosts debe ser un numero.") from exc
+        if requested_hosts < 1:
+            raise ValidationError(f"Subred {index}: hosts debe ser mayor que cero.")
+        requests.append(
+            SubnetRequest(
+                normalized_name,
+                requested_hosts,
+                kind,
+                automatic_gateway_policy(kind),
+            )
+        )
+    return requests
+
 
 def build_connection_params(
     transport: str,
@@ -1146,15 +1194,41 @@ class SarevatGui(tk.Tk):
                 "preparar interfaces."
             ),
         )
-        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
-        form.pack(fill="x", anchor="w")
-        base, excluded = tk.StringVar(), tk.StringVar()
+        viewport = ttk.Frame(self.content, style="App.TFrame")
+        viewport.pack(fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(viewport, orient="vertical")
+        canvas = tk.Canvas(viewport, background="#ffffff", highlightthickness=0)
+        scrollbar.configure(command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        form = ttk.Frame(canvas, style="Card.TFrame", padding=(22, 20))
+        form_window = canvas.create_window((0, 0), window=form, anchor="nw")
+
+        def update_scroll_region(_: tk.Event[tk.Misc]) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def resize_form(event: tk.Event[tk.Misc]) -> None:
+            canvas.itemconfigure(form_window, width=event.width)
+
+        form.bind("<Configure>", update_scroll_region)
+        canvas.bind("<Configure>", resize_form)
+        base, mask, excluded = tk.StringVar(), tk.StringVar(value="/24"), tk.StringVar()
         use_subnets, count = tk.StringVar(value="No"), tk.StringVar(value="1")
         rows: list[tuple[tk.StringVar, tk.StringVar, tk.StringVar]] = []
         allocations: list[Any] = []
         current_plan: VLSMPlan | None = None
         ttk.Label(form, text="Introducir Red Base", style="Body.TLabel").pack(anchor="w")
-        ttk.Entry(form, textvariable=base).pack(fill="x", pady=(3, 10))
+        base_controls = ttk.Frame(form, style="Card.TFrame")
+        base_controls.pack(anchor="w", pady=(3, 10))
+        ttk.Entry(base_controls, textvariable=base, width=26).pack(side="left")
+        ttk.Combobox(
+            base_controls,
+            textvariable=mask,
+            values=VLSM_MASK_OPTIONS,
+            width=7,
+            state="readonly",
+        ).pack(side="left", padx=(8, 0))
         ttk.Label(form, text="Excluir IP", style="Body.TLabel").pack(anchor="w")
         ttk.Label(form, text="(opcional, separadas por coma)", style="Body.TLabel").pack(anchor="w")
         ttk.Entry(form, textvariable=excluded).pack(fill="x", pady=(3, 10))
@@ -1162,7 +1236,7 @@ class SarevatGui(tk.Tk):
         choice = ttk.Combobox(form, textvariable=use_subnets, values=("No", "Si"), state="readonly")
         choice.pack(fill="x", pady=(3, 10))
         subnets_frame = ttk.Frame(form, style="Card.TFrame")
-        results = ttk.Frame(self.content, style="App.TFrame")
+        results = ttk.Frame(form, style="Card.TFrame", padding=(14, 12))
 
         def render_subnets(*_: object) -> None:
             for child in subnets_frame.winfo_children():
@@ -1184,7 +1258,9 @@ class SarevatGui(tk.Tk):
                 if not 1 <= quantity <= 64:
                     raise ValueError
             except ValueError:
-                messagebox.showwarning("Cantidad invalida", "Indica entre 1 y 64 subredes.", parent=self)
+                messagebox.showwarning(
+                    "Cantidad invalida", "Cantidad: usa un numero entre 1 y 64.", parent=self
+                )
                 return
             for widget in subnets_frame.grid_slaves():
                 if int(widget.grid_info().get("row", 0)) > 0:
@@ -1213,6 +1289,18 @@ class SarevatGui(tk.Tk):
                 rows.append((name, hosts, kind))
             subnets_frame.columnconfigure(1, weight=1)
 
+        def export_current_plan(plan: VLSMPlan) -> None:
+            try:
+                json_path, csv_path = export_vlsm_outputs(plan, self.runtime / "reports")
+            except OSError as exc:
+                messagebox.showwarning("Exportacion VLSM", str(exc), parent=self)
+                return
+            messagebox.showinfo(
+                "Exportacion VLSM",
+                f"Resultados guardados localmente:\n{json_path.name}\n{csv_path.name}",
+                parent=self,
+            )
+
         def calculate() -> None:
             nonlocal current_plan
             try:
@@ -1220,34 +1308,23 @@ class SarevatGui(tk.Tk):
                     child.destroy()
                 allocations.clear()
                 current_plan = None
+                base_network = build_vlsm_base_network(base.get(), mask.get())
                 if use_subnets.get() == "No":
-                    values = network_summary(base.get().strip())
+                    values = network_summary(base_network)
                     if excluded.get().strip():
                         values["Excluir IP"] = "Solo se aplica cuando trabajas con subredes."
                     lines = [f"{key}: {value}" for key, value in values.items()]
                 else:
                     if not rows:
                         raise ValidationError("Primero prepara los campos de las subredes.")
-                    requests = [
-                        SubnetRequest(
-                            name.get().strip(),
-                            int(hosts.get()),
-                            kind.get(),
-                            automatic_gateway_policy(kind.get()),
-                        )
-                        for name, hosts, kind in rows
-                    ]
-                    reserved = tuple(item.strip() for item in excluded.get().split(",") if item.strip())
-                    current_plan = calculate_vlsm(base.get().strip(), requests, reserved=reserved)
-                    allocations.extend(current_plan.allocations)
-                    lines = [f"Red base: {current_plan.base_network}"]
-                    lines.extend(
-                        f"{item.name}: {item.network} | gateway: {item.gateway or 'No aplica'} | "
-                        f"broadcast: {item.broadcast}"
-                        for item in current_plan.allocations
+                    requests = build_vlsm_requests(
+                        [(name.get(), hosts.get(), kind.get()) for name, hosts, kind in rows]
                     )
+                    reserved = tuple(item.strip() for item in excluded.get().split(",") if item.strip())
+                    current_plan = calculate_vlsm(base_network, requests, reserved=reserved)
+                    allocations.extend(current_plan.allocations)
+                    lines = []
                 results.pack(fill="x", pady=(14, 0))
-                ttk.Label(results, text="Resultado validado", style="Title.TLabel").pack(anchor="w")
                 if allocations:
                     ttk.Label(
                         results,
@@ -1303,6 +1380,49 @@ class SarevatGui(tk.Tk):
                         text="Exportar resultados JSON y CSV",
                         command=export_current_plan,
                     ).pack(anchor="w", pady=(8, 0))
+                ttk.Label(results, text="Resultado", style="Body.TLabel", font=("Segoe UI", 10, "bold")).pack(
+                    anchor="w"
+                )
+                if allocations:
+                    ttk.Label(
+                        results,
+                        text=f"Red base: {current_plan.base_network}",
+                        style="Body.TLabel",
+                        justify="left",
+                    ).pack(anchor="w", pady=(3, 6))
+                    columns = ("nombre", "red", "mascara", "gateway", "broadcast")
+                    table = ttk.Treeview(
+                        results, columns=columns, show="headings", height=min(8, len(allocations))
+                    )
+                    headings = {
+                        "nombre": "Nombre",
+                        "red": "Red",
+                        "mascara": "Mascara",
+                        "gateway": "Gateway",
+                        "broadcast": "Broadcast",
+                    }
+                    widths = {"nombre": 130, "red": 140, "mascara": 125, "gateway": 120, "broadcast": 120}
+                    for column in columns:
+                        table.heading(column, text=headings[column])
+                        table.column(column, width=widths[column], minwidth=90, stretch=True)
+                    for item in allocations:
+                        table.insert(
+                            "",
+                            "end",
+                            values=(
+                                item.name,
+                                item.network,
+                                item.netmask,
+                                item.gateway or "No aplica",
+                                item.broadcast,
+                            ),
+                        )
+                    table.pack(fill="x", anchor="w")
+                    ttk.Button(
+                        results,
+                        text="Exportar resultados JSON y CSV",
+                        command=lambda plan=current_plan: export_current_plan(plan),
+                    ).pack(anchor="w", pady=(8, 0))
                 else:
                     ttk.Label(results, text="\n".join(lines), style="Body.TLabel", justify="left").pack(
                         anchor="w"
@@ -1318,7 +1438,7 @@ class SarevatGui(tk.Tk):
                         wraplength=680,
                     ).pack(anchor="w", pady=(10, 5))
             except (ValidationError, ValueError) as exc:
-                messagebox.showwarning("Datos por corregir", str(exc), parent=self)
+                messagebox.showwarning("Corrige los datos", str(exc), parent=self)
 
         choice.bind("<<ComboboxSelected>>", render_subnets)
         ttk.Button(form, text="Validar y calcular", style="Primary.TButton", command=calculate).pack(fill="x")

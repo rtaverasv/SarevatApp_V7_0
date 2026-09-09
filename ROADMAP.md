@@ -2,56 +2,78 @@
 
 ## Propósito y alcance
 
-Este es el roadmap principal de SarevatApp. Integra la comparación entre
-entornos con la evolución del producto y prioriza la confianza operativa antes
-de ampliar alcance. La versión 7.0 administra equipos Cisco IOS/IOS-XE por SSH
-o consola serial y permanece exclusivamente en IPv4. IPv6 y otros fabricantes
-solo se evaluarán como iniciativas independientes, con aprobación, validadores
-y pruebas propias.
+SarevatApp 7.0 administra equipos Cisco IOS/IOS-XE por SSH o consola serial y
+permanece exclusivamente en IPv4. Mantiene dos formas de uso sobre la misma
+capa de validaciones y planes: PowerShell/terminal y GUI Alpha. IPv6 y otros
+fabricantes requieren una iniciativa independiente, aprobada y probada.
 
-La referencia funcional es `SarevatApp_V7_0.py` y el paquete `sarevat/` con
-Python 3.11 o posterior. La validación local registrada incluye 118 pruebas,
-cobertura de 1,324 de 1,324 líneas ejecutables y 99% de ramas, junto con Ruff,
-Bandit y `pip check`. Estos resultados son simulados: no certifican equipos
-Cisco reales.
+La referencia funcional es `SarevatApp_V7_0.py`, el paquete `sarevat/` y la
+GUI `SarevatApp_GUI_alpha.py`. La última validación local aprobó 163 pruebas,
+Ruff, Bandit y `pip check`; también hay CI para Python 3.11 y 3.12. Estos
+resultados no certifican compatibilidad con equipos Cisco reales.
 
-## Línea base y reglas de trabajo
+## Reglas de operación
 
-- Antes de modificar otra copia del proyecto, comparar estructura,
-  dependencias, hashes, pruebas y capacidades con esta línea base.
-- Clasificar diferencias como: Conservada, Mejorada, Regresión, Ausente o Nueva
-  sin probar; registrar archivo, evidencia y prioridad P0/P1/P2/P3.
-- No declarar compatibilidad real por pruebas unitarias o mocks. Se requiere
-  CML, EVE-NG, GNS3 o hardware Cisco autorizado.
-- Mantener el flujo seguro: `CommandPlan` validado, dry-run, confirmación,
-  respaldo redactado, checkpoint, detección de errores IOS, fail-fast,
-  postchecks y rollback confirmado.
-- Mantener la auditoría JSONL con secretos redactados, validación estricta de
-  entradas, VLSM IPv4 y escaneo autorizado con límites.
+- No declarar soporte real por mocks, cobertura o dry-run: se requiere CML,
+  EVE-NG, GNS3 o hardware Cisco autorizado.
+- Toda configuración debe seguir este orden: validar, vista previa redactada,
+  dry-run, confirmación, respaldo, checkpoint, postchecks y rollback.
+- No persistir passwords, enable secrets ni claves SNMP. Las credenciales se
+  solicitan para cada conexión y los respaldos se cifran con una frase temporal.
+- AAA y SNMPv3 son cambios de alto impacto: requieren recuperación por consola,
+  confirmaciones adicionales y revisión manual antes de aplicar.
+- Las operaciones por lote se preparan y revisan primero; no se habilita la
+  aplicación masiva hasta validar el flujo en laboratorio.
 
-## Roadmap por fases
+## Estado por fases
 
-| Fase | Prioridad | Objetivo y resultado esperado |
-|---|---:|---|
-| 0. Congelar línea base | P0 | Comparar árbol, dependencias, hashes, pruebas y capacidades antes de integrar otra copia. |
-| 1. Confianza y regresión automatizada | P0 | Empaquetado reproducible, pruebas de validadores, VLSM, seguridad, escáner, CLI, SSH, serial, 23 planes, rollback y postchecks semánticos; CI con pytest, cobertura, Ruff y Bandit. |
-| 2. Laboratorio y compatibilidad | P0/P1 | Validar flujos críticos en CML/EVE-NG/GNS3 y realizar piloto autorizado; crear matriz por IOS/IOS-XE, modelo, licencia y capacidades antes de generar comandos. |
-| 3. Inventario y flujo reutilizable | P1 | Inventario versionado por esquema, perfiles de conexión, almacén seguro de credenciales, borradores de planes, diff de configuración y reportes/códigos de salida normalizados. |
-| 4. Seguridad, plantillas y cumplimiento | P1/P2 | Plantillas por rol/sitio, NTP, syslog, SSH, SNMPv3, AAA y hardening; auditoría de solo lectura, golden config, drift, evidencia y remediación separada como `CommandPlan`. |
-| 5. Operación por lotes y experiencia | P2 | Grupos, concurrencia limitada, ventanas de mantenimiento, despliegue gradual, pausa por fallo, historial filtrable y terminal mejorada o web local sobre la misma capa de casos de uso. |
-| 6. Entrega y certificación continua | P2 | Respaldos cifrados y con retención, reportes HTML/JSON/CSV, empaquetado, releases versionados, changelog, migraciones, guía de recuperación y matriz de soporte certificada. |
+| Fase | Estado | Resultado actual | Pendiente principal |
+|---|---|---|---|
+| 0. Línea base y control de cambios | Completada | Repositorio unificado, `main` actualizado, respaldo `backup/main-antes-gui`, changelog y CI activos. | Mantener la comparación antes de integrar fuentes externas. |
+| 1. Confianza y regresión automatizada | Completada localmente | 163 pruebas; validadores, VLSM, escáner, CLI, SSH/serial simulados, servicios, executor, rollback y reportes. Ruff, Bandit y `pip check` aprobados. | Añadir pruebas visuales de GUI cuando exista un entorno gráfico automatizable. |
+| 2. Laboratorio y compatibilidad | Pendiente P0 | Preflight, guía de piloto y comportamiento fail-fast preparados. | Probar SSH, serial, dry-run, checkpoint, rollback, AAA y SNMPv3 en equipos autorizados; crear matriz IOS/IOS-XE, modelo, licencia y capacidades. |
+| 3. Inventario y flujo reutilizable | Completada localmente | Perfiles sin secretos, grupos, borradores redactados, diff, historial y reportes JSON/CSV. La GUI y PowerShell los comparten. | Confirmar persistencia y rutas de `runtime/` en la laptop y en equipos de uso real. |
+| 4. Seguridad, plantillas y cumplimiento | Completada localmente | NTP/syslog por sitio, SSH, SNMPv3, AAA local protegido, hardening, auditoría de solo lectura, referencia segura y detección de drift. | Validar comandos y postchecks por plataforma; documentar excepciones por versión IOS. |
+| 5. Lotes y experiencia de usuario | Parcial | Motor gradual, concurrencia, ventana, pausa por fallo e historial; GUI Alpha funcional con navegación, sesión única, VLSM, escáner e inventario. | Validar la GUI con laboratorio y decidir cuándo habilitar ejecución real y controlada de lotes. |
+| 6. Entrega y certificación continua | Parcial | Respaldos redactados cifrados, reportes JSON/CSV, guía de uso, preflight y registro de cambios. | Empaquetar como `.exe`, definir retención de respaldos, preparar releases y publicar una matriz de soporte certificada. |
+
+## Capacidades entregadas
+
+- Conexión Cisco por SSH IPv4 y consola serial; la consola muestra puerto,
+  baudrate y autenticación opcional en lugar de pedir una IP.
+- Descubrimiento de equipo, inventario de interfaces y consola libre auditada.
+- Planificación VLSM IPv4 con gateway, broadcast y hosts automáticos; permite
+  preparar una configuración por interfaz calculada.
+- Escaneo IPv4 autorizado con segunda confirmación, DNS inverso, caché ARP y
+  exportación de resultados.
+- 23 planes de servicios y protocolos, configuración inicial, IPv4 de interfaz,
+  NTP/syslog, SNMPv3, AAA, hardening, referencias y drift.
+- Respaldo cifrado, checkpoint en el equipo, detección de errores IOS,
+  postchecks, rollback opcional y auditoría redactada.
+- GUI Alpha funcional y PowerShell conservado como alternativa. La GUI no se
+  considera certificada hasta pasar pruebas de laboratorio.
 
 ## Próximo sprint recomendado
 
-1. Ejecutar fases 0 y 1 contra cualquier copia de VS Code antes de añadir
-   capacidades nuevas.
-2. Mantener y extender la suite de regresión de seguridad, VLSM, escáner, CLI,
-   executor y servicios; cubrir cancelaciones, errores IOS y rollback.
-3. Corregir primero cualquier diferencia que sea una regresión P0/P1.
-4. Preparar laboratorio y matriz de compatibilidad antes de ampliar servicios o
-   declarar soporte de plataforma.
-5. Implementar después inventario, credenciales seguras y diff; continuar con
-   cumplimiento, operaciones masivas y experiencia de usuario.
+1. Ejecutar el preflight y una prueba de descubrimiento de solo lectura por SSH
+   en un equipo autorizado.
+2. Repetir la prueba por consola serial, con y sin autenticación de línea.
+3. Validar un dry-run y un cambio de bajo riesgo con checkpoint y rollback;
+   dejar AAA, SNMPv3 y cambios de acceso para una sesión de prueba separada.
+4. Registrar modelo, versión IOS/IOS-XE, licencia, comandos aceptados y
+   postchecks en la matriz de compatibilidad.
+5. Corregir cualquier diferencia de laboratorio antes de habilitar lotes reales
+   o declarar la GUI estable.
+6. Tras el laboratorio, empaquetar una versión de prueba `.exe` y validarla en
+   una laptop limpia conservando el código fuente y la opción PowerShell.
+
+## Criterio de salida para GUI estable
+
+La GUI podrá dejar de llamarse Alpha cuando complete, como mínimo, una prueba
+autorizada de SSH y serial, descubrimiento, VLSM, dry-run, respaldo cifrado,
+checkpoint, rollback y manejo seguro de un error de IOS. Debe conservarse la
+evidencia de la prueba y la matriz de compatibilidad antes de usarla para
+cambios operativos.
 
 ## Validación mínima local
 
@@ -61,7 +83,3 @@ python -m ruff check SarevatApp_V7_0.py sarevat tests
 python -m bandit -q -r sarevat SarevatApp_V7_0.py
 python -m pip check
 ```
-
-No conviene empezar por una interfaz gráfica sin conservar la separación entre
-la interfaz y los casos de uso: duplicaría el acoplamiento y aumentaría el
-riesgo operativo.
