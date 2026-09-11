@@ -5,7 +5,7 @@ import json
 import pytest
 
 from sarevat.inventory import ConnectionProfile, InventoryStore
-from sarevat.models import DeviceFacts, DeviceKind
+from sarevat.models import DeviceFacts, DeviceKind, NetworkPlatform
 
 
 def test_ssh_profile_roundtrip_and_discovery(tmp_path) -> None:
@@ -26,6 +26,16 @@ def test_serial_profile_and_removal(tmp_path) -> None:
     store.add(profile)
     assert store.remove(profile.id)
     assert not store.list_profiles()
+
+
+def test_discovery_persists_detected_platform_without_secrets(tmp_path) -> None:
+    store = InventoryStore(tmp_path / "inventory.json")
+    profile = ConnectionProfile.create_ssh("EX2200", "192.0.2.20", "netops", DeviceKind.SWITCH)
+    store.add(profile)
+    store.update_discovery(profile.id, DeviceFacts(platform=NetworkPlatform.JUNIPER_JUNOS, model="EX2200"))
+    saved = store.list_profiles()[0]
+    assert saved.platform is NetworkPlatform.JUNIPER_JUNOS
+    assert "password" not in (tmp_path / "inventory.json").read_text(encoding="utf-8").lower()
 
 
 def test_inventory_groups_are_normalized_and_filterable(tmp_path) -> None:

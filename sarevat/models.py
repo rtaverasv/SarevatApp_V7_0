@@ -14,6 +14,20 @@ class DeviceKind(StrEnum):
     SWITCH = "switch"
 
 
+class NetworkPlatform(StrEnum):
+    """Plataforma de red, independiente del rol router/switch."""
+
+    CISCO_IOS = "cisco_ios"
+    CISCO_IOS_XE = "cisco_ios_xe"
+    JUNIPER_JUNOS = "juniper_junos"
+    HUAWEI_VRP = "huawei_vrp"
+    UNKNOWN = "unknown"
+
+    @property
+    def is_cisco(self) -> bool:
+        return self in {self.CISCO_IOS, self.CISCO_IOS_XE}
+
+
 class ResultStatus(StrEnum):
     PLANNED = "planned"
     APPLIED = "applied"
@@ -43,6 +57,7 @@ class InterfaceState:
 
 @dataclass(slots=True)
 class DeviceFacts:
+    platform: NetworkPlatform = NetworkPlatform.UNKNOWN
     hostname: str = "desconocido"
     model: str = "desconocido"
     version: str = "desconocida"

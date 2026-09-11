@@ -7,7 +7,7 @@ import tkinter as tk
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, simpledialog, ttk
@@ -19,7 +19,6 @@ from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutExc
 from sarevat.backup_crypto import BackupCipher
 from sarevat.baselines import BaselineStore, ConfigurationBaseline, compare_with_baseline
 from sarevat.batches import BatchHistoryStore, BatchPreview
-from sarevat.cisco.discovery import discover_device
 from sarevat.cisco.executor import CiscoExecutor
 from sarevat.cisco.services import (
     SERVICE_CATALOG,
@@ -27,6 +26,7 @@ from sarevat.cisco.services import (
     build_basic_hardening_plan,
     build_initial_setup_plan,
     build_interface_ip_plan,
+    build_serial_bootstrap_plan,
     build_service_plan,
     build_site_observability_plan,
     build_snmpv3_plan,
@@ -36,7 +36,8 @@ from sarevat.compliance import ComplianceStatus, audit_running_config, export_co
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.logging_utils import AuditLogger
-from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport
+from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport, NetworkPlatform
+from sarevat.platforms import adapter_for, detect_ssh_platform, detection_from_netmiko, device_type_for
 from sarevat.reporting import export_execution_report_csv, export_execution_report_json
 from sarevat.scanner import (
     ScanPolicy,
@@ -112,17 +113,22 @@ def build_connection_params(
     username: str | None = None,
     password: str | None = None,
     secret: str | None = None,
+    platform: NetworkPlatform | str = NetworkPlatform.CISCO_IOS,
 ) -> dict[str, Any]:
     """Valida datos de una conexion temporal sin persistir secretos."""
     normalized_username = (username or "").strip()
     current_password = password or ""
     current_secret = secret or ""
+    try:
+        selected_platform = NetworkPlatform(platform)
+    except ValueError as exc:
+        raise ValidationError("La plataforma seleccionada no es valida.") from exc
     if transport == "ssh":
         host = str(validate_ipv4(target.strip()))
         if not normalized_username or not current_password:
             raise ValidationError("SSH requiere usuario y password.")
         return {
-            "device_type": "cisco_ios",
+            "device_type": device_type_for(selected_platform, transport),
             "host": host,
             "username": normalized_username,
             "password": current_password,
@@ -137,8 +143,12 @@ def build_connection_params(
             raise ValidationError("El baudrate debe ser un numero entero.") from exc
         if speed <= 0:
             raise ValidationError("El baudrate debe ser positivo.")
+        if not selected_platform.is_cisco:
+            raise ValidationError(
+                "La consola serial multi-fabricante aun no esta certificada; usa SSH o selecciona Cisco."
+            )
         params: dict[str, Any] = {
-            "device_type": "cisco_ios_serial",
+            "device_type": device_type_for(selected_platform, transport),
             "serial_settings": {"port": target.strip(), "baudrate": speed},
         }
         if current_password:
@@ -200,10 +210,12 @@ class DeviceSession:
     """Conexion abierta para una sesion GUI; se cierra al desconectar."""
 
     connection: Any
-    executor: CiscoExecutor
+    executor: CiscoExecutor | None
     facts: DeviceFacts
     device_kind: DeviceKind
     audit: AuditLogger
+    platform: NetworkPlatform
+    transport: str
     profile_id: str | None = None
 
 
@@ -435,6 +447,9 @@ class SarevatGui(tk.Tk):
         ).pack(anchor="w", pady=(4, 18))
         transport = tk.StringVar(value=profile.transport if profile else "ssh")
         kind = tk.StringVar(value=profile.device_kind.value if profile else "router")
+        platform = tk.StringVar(
+            value=(profile.platform.value if profile else NetworkPlatform.UNKNOWN.value)
+        )
         target = tk.StringVar(value=profile_connection_target(profile))
         baudrate = tk.StringVar(value=str(profile.baudrate) if profile and profile.baudrate else "9600")
         username = tk.StringVar(value=profile.username if profile and profile.username else "")
@@ -443,17 +458,25 @@ class SarevatGui(tk.Tk):
         console_auth = tk.BooleanVar(value=False)
         selectors = ttk.Frame(form, style="Card.TFrame")
         selectors.pack(fill="x")
-        for column in range(2):
+        for column in range(3):
             selectors.columnconfigure(column, weight=1)
         ttk.Label(selectors, text="Tipo de equipo", style="Body.TLabel").grid(
             row=0, column=0, sticky="w", padx=(0, 10)
         )
         ttk.Label(selectors, text="Metodo de conexion", style="Body.TLabel").grid(row=0, column=1, sticky="w")
+        ttk.Label(selectors, text="Plataforma", style="Body.TLabel").grid(row=0, column=2, sticky="w")
         ttk.Combobox(selectors, textvariable=kind, values=("router", "switch"), state="readonly").grid(
             row=1, column=0, sticky="ew", padx=(0, 10), pady=(3, 13)
         )
         mode_box = ttk.Combobox(selectors, textvariable=transport, values=("ssh", "serial"), state="readonly")
-        mode_box.grid(row=1, column=1, sticky="ew", pady=(3, 13))
+        mode_box.grid(row=1, column=1, sticky="ew", padx=(0, 10), pady=(3, 13))
+        platform_box = ttk.Combobox(
+            selectors,
+            textvariable=platform,
+            values=tuple(item.value for item in NetworkPlatform),
+            state="readonly",
+        )
+        platform_box.grid(row=1, column=2, sticky="ew", pady=(3, 13))
         dynamic = ttk.Frame(form, style="Card.TFrame")
         dynamic.pack(fill="x")
         status = tk.StringVar(value="Listo para conectar y descubrir en modo lectura.")
@@ -511,6 +534,7 @@ class SarevatGui(tk.Tk):
                     username.get(),
                     password.get(),
                     secret.get(),
+                    platform.get(),
                 )
             except ValidationError as exc:
                 status.set(str(exc))
@@ -538,7 +562,8 @@ class SarevatGui(tk.Tk):
                 with suppress(OSError, ValueError):
                     self.inventory.update_discovery(result.profile_id, facts)
             text.set(
-                f"Conectado a {facts.hostname}. La sesion permanece abierta hasta que pulses Desconectar."
+                f"Conectado a {facts.hostname} ({result.platform.value}). "
+                "La sesion permanece abierta hasta que pulses Desconectar."
             )
             self._show_facts(facts)
             primary_action(
@@ -548,6 +573,7 @@ class SarevatGui(tk.Tk):
             ).pack(fill="x", pady=(12, 0))
 
         mode_box.bind("<<ComboboxSelected>>", render_fields)
+        platform_box.bind("<<ComboboxSelected>>", render_fields)
         render_fields()
         button = primary_action(form, "Conectar y descubrir", connect)
         button.pack(fill="x", pady=(15, 8))
@@ -575,15 +601,33 @@ class SarevatGui(tk.Tk):
     def _open_session(
         self, params: dict[str, Any], device_kind: DeviceKind, profile_id: str | None = None
     ) -> DeviceSession:
-        connection = ConnectHandler(**params)
+        connection_params = dict(params)
+        detection = detection_from_netmiko(str(connection_params.get("device_type")))
+        if connection_params.get("device_type") == "autodetect":
+            detection = detect_ssh_platform(connection_params)
+            if detection.requires_confirmation or not detection.netmiko_device_type:
+                raise ValidationError(
+                    "No se pudo identificar con seguridad la plataforma. "
+                    "Selecciona una plataforma certificada."
+                )
+            connection_params["device_type"] = detection.netmiko_device_type
+        connection = ConnectHandler(**connection_params)
         try:
-            if params.get("secret") and not connection.check_enable_mode():
+            if detection.platform.is_cisco and params.get("secret") and not connection.check_enable_mode():
                 connection.enable()
-            facts = discover_device(connection)
+            adapter = adapter_for(detection.platform)
+            facts = adapter.discover(connection)
             audit = AuditLogger(self.runtime / "logs")
-            executor = CiscoExecutor(connection, audit=audit, backup_directory=self.runtime / "backups")
+            executor = (
+                CiscoExecutor(connection, audit=audit, backup_directory=self.runtime / "backups")
+                if adapter.supports_configuration
+                else None
+            )
             audit.event("gui_connection_opened", target=params.get("host", params.get("serial_settings")))
-            return DeviceSession(connection, executor, facts, device_kind, audit, profile_id)
+            transport = "serial" if "serial_settings" in params else "ssh"
+            return DeviceSession(
+                connection, executor, facts, device_kind, audit, facts.platform, transport, profile_id
+            )
         except Exception:
             disconnect = getattr(connection, "disconnect", None)
             if callable(disconnect):
@@ -618,6 +662,7 @@ class SarevatGui(tk.Tk):
             font=("Segoe UI", 11, "bold"),
         ).pack(anchor="w")
         for label, value in (
+            ("Plataforma", facts.platform.value),
             ("Hostname", facts.hostname),
             ("Modelo", facts.model),
             ("Version", facts.version),
@@ -638,6 +683,33 @@ class SarevatGui(tk.Tk):
             f"Configuración · {self.session.facts.hostname}",
             "Cada cambio conserva vista previa, dry-run, respaldo cifrado, checkpoint y confirmación.",
         )
+        if not self.session.platform.is_cisco:
+            card = ttk.Frame(self.content, style="Card.TFrame", padding=(18, 16))
+            card.pack(fill="x")
+            ttk.Label(
+                card,
+                text=f"{self.session.platform.value}: modo de inventario seguro",
+                background="#ffffff",
+                foreground="#102a43",
+                font=("Segoe UI", 11, "bold"),
+            ).pack(anchor="w")
+            ttk.Label(
+                card,
+                text=(
+                    "Esta plataforma solo tiene descubrimiento de lectura certificado. "
+                    "Las funciones Cisco y la consola de cambios permanecen bloqueadas."
+                ),
+                background="#ffffff",
+                foreground="#526777",
+                wraplength=720,
+            ).pack(anchor="w", pady=(6, 12))
+            ttk.Button(card, text="Actualizar estado e inventario", command=self._refresh_session_facts).pack(
+                anchor="w"
+            )
+            ttk.Button(self.content, text="Desconectar sesión", command=self._disconnect_session).pack(
+                anchor="w", pady=(16, 0)
+            )
+            return
         groups = (
             (
                 "Operación y configuración",
@@ -646,6 +718,7 @@ class SarevatGui(tk.Tk):
                     ("Protocolos y servicios", self._service_catalog_page),
                     ("IPv4 en interfaz", self._interface_ipv4_page),
                     ("Configuración inicial", self._initial_setup_page),
+                    ("Equipo nuevo por serial", self._serial_bootstrap_page),
                 ),
             ),
             (
@@ -703,7 +776,7 @@ class SarevatGui(tk.Tk):
         if not self.session:
             return
         self._run_session_worker(
-            lambda: discover_device(self.session.executor.connection),
+            lambda: adapter_for(self.session.platform).discover(self.session.connection),
             self._finish_refresh_facts,
         )
 
@@ -1045,7 +1118,8 @@ class SarevatGui(tk.Tk):
             status.set(result.message)
             if self.session is session:
                 self._run_session_worker(
-                    lambda: discover_device(session.executor.connection), self._update_session_facts
+                    lambda: adapter_for(session.platform).discover(session.connection),
+                    self._update_session_facts,
                 )
 
         apply_button = ttk.Button(
@@ -1233,6 +1307,42 @@ class SarevatGui(tk.Tk):
             (
                 "Cada solicitud se calcula como una red separada; valida el resultado antes de "
                 "preparar interfaces."
+            ),
+        )
+
+    def _serial_bootstrap_page(self) -> None:
+        if not self.session or not self.session.platform.is_cisco:
+            messagebox.showwarning(
+                "Bootstrap serial",
+                "Esta herramienta requiere una sesión Cisco IOS abierta por consola serial.",
+                parent=self,
+            )
+            return
+        if self.session.transport != "serial":
+            messagebox.showwarning(
+                "Bootstrap serial",
+                "Desconecta la sesión SSH y abre una conexión serial para preparar un equipo nuevo.",
+                parent=self,
+            )
+            return
+        self._simple_plan_form(
+            "Equipo nuevo Cisco por serial",
+            (
+                ("Hostname", "hostname"),
+                ("Dominio", "domain"),
+                ("Usuario administrador", "username"),
+                ("Password", "password"),
+                ("Enable secret", "enable_secret"),
+                ("Interfaz de gestion", "interface"),
+                ("IPv4 de gestion", "address"),
+                ("Mascara IPv4", "netmask"),
+                ("RSA (2048/3072/4096)", "rsa_bits"),
+            ),
+            build_serial_bootstrap_plan,
+            hidden={"password", "enable_secret"},
+            notice=(
+                "Vista previa obligatoria. El plan configura IP y SSH en memoria; "
+                "no guarda startup-config automaticamente."
             ),
         )
         viewport = ttk.Frame(self.content, style="App.TFrame")
@@ -1699,11 +1809,12 @@ class SarevatGui(tk.Tk):
         self._clear()
         title = "Equipos guardados" if not action else "Seleccionar perfil"
         self._page_header(title, "Los perfiles no contienen passwords ni enable secrets.")
-        columns = ("nombre", "tipo", "conexion", "objetivo", "visto")
+        columns = ("nombre", "tipo", "plataforma", "conexion", "objetivo", "visto")
         tree = ttk.Treeview(self.content, columns=columns, show="headings", height=11)
         for column, text, width in (
             ("nombre", "Nombre", 150),
             ("tipo", "Tipo", 80),
+            ("plataforma", "Plataforma", 130),
             ("conexion", "Conexion", 80),
             ("objetivo", "IPv4 o puerto", 170),
             ("visto", "Ultima conexion", 180),
@@ -1721,6 +1832,7 @@ class SarevatGui(tk.Tk):
                 values=(
                     profile.name,
                     profile.device_kind.value,
+                    profile.platform.value,
                     profile.transport.upper(),
                     target,
                     profile.last_seen_at or "Sin conexion",
@@ -1754,7 +1866,12 @@ class SarevatGui(tk.Tk):
         dialog.transient(self)
         dialog.grab_set()
         dialog.configure(padx=18, pady=18)
-        name, mode, device = tk.StringVar(), tk.StringVar(value="ssh"), tk.StringVar(value="router")
+        name, mode, device, platform = (
+            tk.StringVar(),
+            tk.StringVar(value="ssh"),
+            tk.StringVar(value="router"),
+            tk.StringVar(value=NetworkPlatform.UNKNOWN.value),
+        )
         target, speed, user, groups = (
             tk.StringVar(),
             tk.StringVar(value="9600"),
@@ -1765,6 +1882,7 @@ class SarevatGui(tk.Tk):
             ("Nombre", name),
             ("Conexion (ssh o serial)", mode),
             ("Equipo (router o switch)", device),
+            ("Plataforma (o unknown para detectar por SSH)", platform),
             ("IPv4 o puerto COM", target),
             ("Baudrate para serial", speed),
             ("Usuario SSH", user),
@@ -1777,11 +1895,17 @@ class SarevatGui(tk.Tk):
         def save() -> None:
             try:
                 kind = DeviceKind(device.get().strip().lower())
+                selected_platform = NetworkPlatform(platform.get().strip().lower())
                 profile = (
                     ConnectionProfile.create_ssh(name.get(), target.get(), user.get(), kind)
                     if mode.get().strip().lower() == "ssh"
                     else ConnectionProfile.create_serial(name.get(), target.get(), int(speed.get()), kind)
                 )
+                if profile.transport == "serial" and not selected_platform.is_cisco:
+                    raise ValidationError(
+                        "Los perfiles seriales solo estan certificados para Cisco por ahora."
+                    )
+                profile = replace(profile, platform=selected_platform)
                 self.inventory.add(profile.with_groups(groups.get()))
             except (ValueError, ValidationError) as exc:
                 messagebox.showwarning("Perfil no guardado", str(exc), parent=dialog)

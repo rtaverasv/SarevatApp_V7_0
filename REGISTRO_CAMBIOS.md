@@ -15,6 +15,28 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-11 09:23:23 -04:00
+
+- Se añadió el plan de bootstrap Cisco por serial y su acceso en la GUI: valida hostname, dominio, usuario, password, enable secret, interfaz, IPv4, máscara y RSA; la vista previa incluye IP de gestión, VTY, RSA y SSH.
+- Motivo: preparar equipos Cisco nuevos desde SarevatApp sin depender del flujo manual de PuTTY, manteniendo dry-run, confirmación y guardado de startup-config como acción independiente.
+- Archivos afectados: `sarevat/cisco/services.py`, `sarevat/gui.py`, `tests/test_services_edges.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `182 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. No se aplicaron comandos a hardware; la aceptación serial con Cisco permanece pendiente.
+
+### 2026-09-11 09:17:14 -04:00
+
+- Se implementó la base multi-fabricante en la GUI: plataforma independiente de router/switch, detección SSH prudente, despacho por adaptador e inventario Junos de solo lectura; las sesiones no Cisco bloquean las herramientas y comandos de configuración Cisco.
+- Se conservaron los perfiles sin secretos y se añadió la plataforma detectada al inventario; las conexiones seriales siguen certificadas solo para Cisco mientras se diseña su adaptador específico.
+- Motivo: permitir validar el switch Juniper EX2200 sin arriesgarlo con sintaxis Cisco y dejar una base extensible para Huawei y otros fabricantes.
+- Archivos afectados: `sarevat/models.py`, `sarevat/platforms.py`, `sarevat/juniper/`, `sarevat/inventory.py`, `sarevat/gui.py`, `tests/test_platforms.py`, `tests/test_juniper_discovery.py`, `tests/test_inventory.py`, `tests/test_gui.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación de `sarevat`; `181 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. No se conectó hardware real; queda pendiente la aceptación controlada con el EX2200 y con el Cisco de INFOTEP.
+
+### 2026-09-11 08:56:07 -04:00
+
+- Se incorporó al roadmap la iniciativa de compatibilidad multi-fabricante: detección prudente de plataforma, modelo de capacidades y adaptadores independientes para Cisco IOS/IOS-XE y Junos.
+- Motivo: la aplicación actual distingue router/switch, pero sus conexiones y descubrimiento asumen Cisco; se debe impedir que un Juniper reciba sintaxis Cisco antes de ampliar automatizaciones.
+- Archivos afectados: `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: revisión de `DeviceKind`, parámetros de conexión y descubrimiento Cisco; `git diff --check` aprobado. No se ejecutaron pruebas porque el cambio solo afecta documentación.
+
 ### 2026-09-09 18:45:56 -04:00
 
 - Se incorporó al roadmap el desglose de las fases 0 a 7 para el asistente serial de equipo nuevo, con alcance y criterio de salida por fase.

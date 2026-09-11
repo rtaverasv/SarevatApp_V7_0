@@ -517,6 +517,63 @@ def build_initial_setup_plan(data: dict[str, Any]) -> CommandPlan:
     )
 
 
+def build_serial_bootstrap_plan(data: dict[str, Any]) -> CommandPlan:
+    """Prepara el alta inicial Cisco por consola sin persistir ni ejecutar nada.
+
+    El plan es deliberadamente específico de IOS. La interfaz de gestión se
+    configura antes de SSH para que el postcheck por consola pueda comprobarla.
+    """
+    hostname = validate_hostname(str(_value(data, "hostname")))
+    domain = validate_cisco_text(str(_value(data, "domain")), "Dominio", max_length=253, allow_spaces=False)
+    username = validate_cisco_text(
+        str(_value(data, "username")), "Usuario", max_length=64, allow_spaces=False
+    )
+    password = validate_cisco_text(str(_value(data, "password")), "Password", max_length=128)
+    enable_secret = validate_cisco_text(
+        str(_value(data, "enable_secret")), "Enable secret", max_length=128
+    )
+    interface = validate_interface(str(_value(data, "interface")))
+    address = validate_ipv4(str(_value(data, "address")))
+    netmask = validate_netmask(str(_value(data, "netmask")))
+    rsa_bits = _integer(data, "rsa_bits", 1024, 4096)
+    if rsa_bits not in {2048, 3072, 4096}:
+        raise ValidationError("Utiliza RSA 2048, 3072 o 4096 bits.")
+    commands = (
+        f"hostname {hostname}",
+        f"enable secret {enable_secret}",
+        f"interface {interface}",
+        f"ip address {address} {netmask}",
+        "no shutdown",
+        "exit",
+        f"ip domain-name {domain}",
+        f"username {username} privilege 15 secret {password}",
+        "line vty 0 4",
+        "login local",
+        "transport input ssh",
+        "exit",
+        f"crypto key generate rsa modulus {rsa_bits}",
+        "ip ssh version 2",
+    )
+    return CommandPlan(
+        name="Bootstrap serial Cisco",
+        service="serial_bootstrap",
+        commands=commands,
+        interfaces=frozenset({interface}),
+        prechecks=("show version", "show ip interface brief"),
+        postchecks=("show ip interface brief", "show ip ssh", "show running-config | section line vty"),
+        postcheck_expectations={
+            "show ip interface brief": (str(address),),
+            "show ip ssh": ("version 2",),
+            "show running-config | section line vty": ("login local", "transport input ssh"),
+        },
+        warnings=(
+            "El plan no guarda startup-config; guardar es una acción separada.",
+            "Verifica que la interfaz de gestión esté conectada antes de aplicar.",
+        ),
+        metadata={"interactive_commands": (f"crypto key generate rsa modulus {rsa_bits}",)},
+    )
+
+
 def build_observability_template(ntp_server: str, syslog_server: str) -> CommandPlan:
     """Prepara controles básicos de tiempo y registro sin almacenar secretos."""
     ntp = validate_ipv4(ntp_server)

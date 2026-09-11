@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sarevat.models import DeviceFacts, DeviceKind
+from sarevat.models import DeviceFacts, DeviceKind, NetworkPlatform
 
 INVENTORY_SCHEMA_VERSION = 1
 _TRANSPORTS = frozenset({"ssh", "serial"})
@@ -28,6 +28,7 @@ class ConnectionProfile:
     serial_port: str | None = None
     baudrate: int | None = None
     username: str | None = None
+    platform: NetworkPlatform = NetworkPlatform.CISCO_IOS
     model: str = "desconocido"
     version: str = "desconocida"
     serial: str = "desconocido"
@@ -89,6 +90,7 @@ class ConnectionProfile:
             model=facts.model,
             version=facts.version,
             serial=facts.serial,
+            platform=facts.platform if facts.platform is not NetworkPlatform.UNKNOWN else self.platform,
             last_seen_at=datetime.now(UTC).isoformat(),
         )
 
@@ -98,6 +100,7 @@ class ConnectionProfile:
     def to_dict(self) -> dict[str, object]:
         data = asdict(self)
         data["device_kind"] = self.device_kind.value
+        data["platform"] = self.platform.value
         return data
 
     @classmethod
@@ -111,6 +114,7 @@ class ConnectionProfile:
             serial_port=str(data["serial_port"]) if data.get("serial_port") else None,
             baudrate=int(data["baudrate"]) if data.get("baudrate") else None,
             username=str(data["username"]) if data.get("username") else None,
+            platform=NetworkPlatform(str(data.get("platform") or NetworkPlatform.CISCO_IOS.value)),
             model=str(data.get("model") or "desconocido"),
             version=str(data.get("version") or "desconocida"),
             serial=str(data.get("serial") or "desconocido"),

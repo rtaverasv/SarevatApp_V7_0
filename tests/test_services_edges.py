@@ -5,6 +5,7 @@ import pytest
 from sarevat.cisco.services import (
     build_initial_setup_plan,
     build_interface_ip_plan,
+    build_serial_bootstrap_plan,
     build_service_plan,
     service_is_configured,
     validate_plan_conflicts,
@@ -123,6 +124,26 @@ def test_interface_ip_plan_accepts_valid_values_and_rejects_unknown_interface() 
     assert plan.interfaces == {"GigabitEthernet0/1"}
     with pytest.raises(ValidationError):
         build_interface_ip_plan("GigabitEthernet0/9", "192.0.2.1", "255.255.255.0", facts)
+
+
+def test_serial_bootstrap_includes_management_ip_without_persisting_configuration() -> None:
+    plan = build_serial_bootstrap_plan(
+        {
+            "hostname": "LAB-R1",
+            "domain": "lab.example",
+            "username": "netops",
+            "password": "Temporal-Password-2026",
+            "enable_secret": "Temporal-Enable-2026",
+            "interface": "FastEthernet0/0",
+            "address": "192.0.2.1",
+            "netmask": "255.255.255.0",
+            "rsa_bits": "2048",
+        }
+    )
+    assert "ip address 192.0.2.1 255.255.255.0" in plan.commands
+    assert "line vty 0 4" in plan.commands
+    assert "copy running-config startup-config" not in plan.commands
+    assert plan.service == "serial_bootstrap"
 
 
 def test_integer_bgp_and_span_etherchannel_conflicts() -> None:

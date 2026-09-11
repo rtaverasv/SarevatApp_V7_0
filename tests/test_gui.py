@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from sarevat.gui import (
+    SarevatGui,
     build_connection_params,
     build_vlsm_base_network,
     build_vlsm_requests,
@@ -11,7 +14,7 @@ from sarevat.gui import (
     profile_connection_target,
 )
 from sarevat.inventory import ConnectionProfile
-from sarevat.models import DeviceKind
+from sarevat.models import DeviceKind, NetworkPlatform
 from sarevat.validators import ValidationError
 from sarevat.vlsm import SubnetRequest, automatic_gateway_policy, calculate_vlsm
 
@@ -30,6 +33,47 @@ def test_gui_serial_connection_can_omit_or_use_temporary_credentials() -> None:
         "serial_settings": {"port": "COM3", "baudrate": 9600},
     }
     assert protected["password"] == "console-password"
+
+
+def test_gui_connection_params_support_safe_ssh_detection_and_junos() -> None:
+    automatic = build_connection_params(
+        "ssh", "192.0.2.10", "", "admin", "password", platform=NetworkPlatform.UNKNOWN
+    )
+    junos = build_connection_params(
+        "ssh", "192.0.2.10", "", "admin", "password", platform=NetworkPlatform.JUNIPER_JUNOS
+    )
+    assert automatic["device_type"] == "autodetect"
+    assert junos["device_type"] == "juniper_junos"
+    with pytest.raises(ValidationError, match="serial multi"):
+        build_connection_params(
+            "serial", "COM3", "9600", platform=NetworkPlatform.JUNIPER_JUNOS
+        )
+
+
+def test_junos_gui_session_is_inventory_only(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    class Connection:
+        def send_command(self, command: str, **_: object) -> str:
+            return {
+                "show version": "Hostname: EX2200\nModel: ex2200-24t\nJunos: 12.3R12.4",
+                "show interfaces terse": "Interface Admin Link Proto Local\nge-0/0/0 up up",
+                "show vlans": "Name Tag\ndefault 1",
+            }[command]
+
+        def disconnect(self) -> None:
+            pass
+
+    monkeypatch.setattr("sarevat.gui.ConnectHandler", lambda **_: Connection())
+    params = build_connection_params(
+        "ssh", "192.0.2.10", "", "netops", "temporary", platform=NetworkPlatform.JUNIPER_JUNOS
+    )
+    holder = SimpleNamespace(runtime=tmp_path)
+    session = SarevatGui._open_session(holder, params, DeviceKind.SWITCH)
+    try:
+        assert session.platform is NetworkPlatform.JUNIPER_JUNOS
+        assert session.executor is None
+        assert session.facts.model == "ex2200-24t"
+    finally:
+        session.audit.close()
 
 
 def test_gui_rejects_invalid_connection_values() -> None:

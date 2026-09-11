@@ -2,13 +2,15 @@
 
 ## Propósito y alcance
 
-SarevatApp 7.0 administra equipos Cisco IOS/IOS-XE por SSH o consola serial y
-permanece exclusivamente en IPv4. Mantiene dos formas de uso sobre la misma
-capa de validaciones y planes: PowerShell/terminal y GUI Alpha. IPv6 y otros
-fabricantes requieren una iniciativa independiente, aprobada y probada.
+SarevatApp 7.0 administra actualmente equipos Cisco IOS/IOS-XE por SSH o
+consola serial y permanece exclusivamente en IPv4. Mantiene dos formas de uso
+sobre la misma capa de validaciones y planes: PowerShell/terminal y GUI Alpha.
+IPv6 no forma parte del alcance. La extensión multi-fabricante se planifica
+como una iniciativa explícita, con detección segura y adaptadores separados;
+no se declarará soporte Juniper ni de otra marca hasta validarlo.
 
 La referencia funcional es `SarevatApp_V7_0.py`, el paquete `sarevat/` y la
-GUI `SarevatApp_GUI_alpha.py`. La última validación local aprobó 163 pruebas,
+GUI `SarevatApp_GUI_alpha.py`. La última validación local aprobó 181 pruebas,
 Ruff, Bandit y `pip check`; también hay CI para Python 3.11 y 3.12. Estos
 resultados no certifican compatibilidad con equipos Cisco reales.
 
@@ -39,6 +41,9 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 
 ## Capacidades entregadas
 
+- Base multi-fabricante local: la GUI puede detectar por SSH Cisco IOS/IOS-XE,
+  Junos y Huawei VRP. Junos ofrece inventario de solo lectura; Huawei y marcas
+  no certificadas no reciben comandos de descubrimiento ni configuración.
 - Conexión Cisco por SSH IPv4 y consola serial; la consola muestra puerto,
   baudrate y autenticación opcional en lugar de pedir una IP.
 - Descubrimiento de equipo, inventario de interfaces y consola libre auditada.
@@ -67,6 +72,45 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 6. Tras el laboratorio, empaquetar una versión de prueba `.exe` y validarla en
    una laptop limpia conservando el código fuente y la opción PowerShell.
 
+## Iniciativa previa: base multi-fabricante y detección de plataforma
+
+Prioridad P0 antes de ampliar automatizaciones de configuración. Hoy la
+selección `router`/`switch` representa el rol del equipo, no su fabricante:
+la conexión y el descubrimiento asumen Cisco IOS. Por ello no se deben enviar
+comandos Cisco a un Juniper ni inferir la marca solo por el tipo de equipo.
+
+1. **Modelo neutral y capacidades.** Incorporar fabricante/plataforma,
+   versión, familia y nivel de confianza de detección, separados de
+   `router`/`switch`; definir las operaciones que cada plataforma admite.
+2. **Sondeo de solo lectura.** Abrir transporte SSH o serial genérico,
+   reconocer de forma prudente banner, prompt y salida de identificación; pedir
+   confirmación al usuario si la confianza es insuficiente. Antes de esa
+   confirmación no se aplicará ninguna configuración.
+3. **Adaptadores por plataforma.** Extraer el comportamiento actual a un
+   adaptador Cisco IOS/IOS-XE y crear un adaptador Junos independiente. Cada
+   adaptador encapsulará descubrimiento, normalización de hechos, comandos
+   permitidos, postchecks y errores propios de su CLI.
+4. **Primer alcance Junos: lectura e inventario.** Implementar descubrimiento
+   e inventario Junos de solo lectura, presentar las capacidades reales y
+   ocultar o marcar como no disponibles las funciones Cisco que no apliquen.
+5. **Cambios Junos y validación.** Diseñar los planes Junos con su flujo de
+   configuración, revisión, confirmación, commit y recuperación; probarlos en
+   laboratorio autorizado antes de habilitarlos. No se reutilizará sintaxis
+   Cisco para Junos.
+6. **Matriz y pruebas.** Añadir fixtures saneados de Cisco y Juniper, pruebas
+   de detección y regresión por adaptador, y una matriz de modelos/versiones
+   certificados.
+
+Estado local inicial: modelo de plataforma, detección SSH por Netmiko y
+adaptadores separados ya existen. Cisco conserva su ejecutor actual; Junos
+solo realiza inventario de lectura; Huawei puede ser identificado pero no tiene
+inventario ni configuración certificados. Ninguna de estas capacidades declara
+compatibilidad real hasta completar la aceptación con hardware autorizado.
+
+El asistente serial se construirá sobre esta base. La primera entrega del
+asistente conservará alcance Cisco, pero quedará aislada en el adaptador
+Cisco para que el soporte Junos no obligue a rehacerla.
+
 ## Próximo desarrollo: asistente de equipo nuevo por serial
 
 Prioridad P0. El objetivo es preparar un router virgen desde SarevatApp sin
@@ -91,14 +135,15 @@ recuperación. Se implementará en cuatro etapas:
 
 | Fase | Alcance | Criterio de salida |
 |---|---|---|
-| 0. Definición segura | Fijar datos obligatorios, límites del flujo y la regla de que persistir configuración es opcional. | Contrato de entradas, resultados esperados y riesgos documentados. |
-| 1. Lógica de bootstrap | Validar COM, baudrate, interfaz, IPv4, máscara, hostname, dominio, usuario y secretos temporales; generar el `CommandPlan` redactado. | Pruebas unitarias cubren planes válidos, errores y ausencia de secretos en registros. |
-| 2. Ejecución serial segura | Reconocer prompts `Router>`, `Router#` y autenticación; permitir `enable secret` sin login de consola; detectar errores IOS y detenerse. | Simulaciones cubren consola abierta, autenticada y fallos IOS sin enviar comandos no previstos. |
-| 3. Asistente visual | Implementar flujo por pasos, campos separados, vista previa, dry-run, confirmación y cancelación. | Navegación y mensajes verificados visualmente sin ocultar ni persistir secretos. |
-| 4. Verificación y registro | Consultar estado de interfaz, IP y SSH; ofrecer registrar el perfil sin passwords. | El flujo termina en descubrimiento de solo lectura o informa un error accionable. |
-| 5. Pruebas locales completas | Ejecutar regresión, pruebas de integración simulada, Ruff, Bandit y revisión de cambios. | Suite completa aprobada antes de usar hardware. |
-| 6. Aceptación en INFOTEP | Probar el Cisco 1841 por serial sin persistencia, luego validar IP, SSH y descubrimiento desde SarevatApp. | Evidencia de comportamiento real, matriz IOS y diferencias documentadas. |
-| 7. Cierre y entrega | Actualizar guía, matriz de compatibilidad y evidencia; promover solo cambios validados en `Mods-GUI`. | Rama sincronizada, `Mods` intacta y respaldo retenido hasta confirmar estabilidad. |
+| 0. Base de plataforma | Completar el modelo fabricante/plataforma, detección de solo lectura y selección confirmada de adaptador; Cisco primero, Junos sin cambios habilitados. | Ningún equipo desconocido recibe sintaxis Cisco; las pruebas cubren detección, incertidumbre y fallback seguro. |
+| 1. Definición segura | Fijar datos obligatorios, límites del flujo y la regla de que persistir configuración es opcional. | Contrato de entradas, resultados esperados y riesgos documentados. |
+| 2. Lógica de bootstrap | Validar COM, baudrate, interfaz, IPv4, máscara, hostname, dominio, usuario y secretos temporales; generar el `CommandPlan` Cisco redactado. | Pruebas unitarias cubren planes válidos, errores y ausencia de secretos en registros. |
+| 3. Ejecución serial segura | Reconocer prompts `Router>`, `Router#` y autenticación mediante el adaptador Cisco; permitir `enable secret` sin login de consola; detectar errores IOS y detenerse. | Simulaciones cubren consola abierta, autenticada y fallos IOS sin enviar comandos no previstos. |
+| 4. Asistente visual | Implementar flujo por pasos, campos separados, vista previa, dry-run, confirmación y cancelación; exponer fabricante detectado, confianza y capacidades. | Navegación y mensajes verificados visualmente sin ocultar ni persistir secretos. |
+| 5. Verificación y registro | Consultar estado de interfaz, IP y SSH; ofrecer registrar el perfil sin passwords y con su plataforma confirmada. | El flujo termina en descubrimiento de solo lectura o informa un error accionable. |
+| 6. Pruebas locales completas | Ejecutar regresión, fixtures Cisco/Juniper, integración simulada, Ruff, Bandit y revisión de cambios. | Suite completa aprobada antes de usar hardware. |
+| 7. Aceptación en INFOTEP | Probar el Cisco 1841 por serial sin persistencia, luego validar IP, SSH y descubrimiento desde SarevatApp. | Evidencia de comportamiento real, matriz IOS y diferencias documentadas. |
+| 8. Cierre y entrega | Actualizar guía, matriz de compatibilidad y evidencia; promover solo cambios validados en `Mods-GUI`. | Rama sincronizada, `Mods` intacta y respaldo retenido hasta confirmar estabilidad. |
 
 ## Criterio de salida para GUI estable
 
