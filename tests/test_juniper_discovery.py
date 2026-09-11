@@ -14,6 +14,11 @@ Model: ex2200-24t-4g
 Junos: 12.3R12.4
 Serial Number: AB1234
 """
+EX2200_VERSION = """Hostname: Admin
+Model: ex2200-24p-4g
+JUNOS Base OS boot [12.3R12.4]
+JUNOS Base OS Software Suite [12.3R12.4]
+"""
 INTERFACES = """Interface               Admin Link Proto    Local                 Remote
 ge-0/0/0                up    up
 ge-0/0/1                up    down
@@ -49,3 +54,16 @@ def test_junos_discovery_is_read_only_and_does_not_request_configuration() -> No
     assert facts.version == "12.3R12.4"
     assert "read_only_inventory" in facts.capabilities
     assert facts.running_config == ""
+
+
+def test_junos_parser_supports_ex2200_bracketed_version_output() -> None:
+    class Ex2200Connection(Connection):
+        def send_command(self, command: str, **_: Any) -> str:
+            if command == "show version":
+                return EX2200_VERSION
+            return super().send_command(command)
+
+    facts = discover_device(Ex2200Connection())
+    assert facts.hostname == "Admin"
+    assert facts.model == "ex2200-24p-4g"
+    assert facts.version == "12.3R12.4"

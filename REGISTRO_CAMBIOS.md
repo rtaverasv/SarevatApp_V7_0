@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-11 11:55:54 -04:00
+
+- Se amplió el parser Junos para reconocer la versión entre corchetes que publica el EX2200, como `JUNOS Base OS boot [12.3R12.4]`.
+- Motivo: la prueba SSH real confirmó detección de plataforma, hostname y modelo, pero la variante de `show version` del EX2200 no incluye la etiqueta `Junos:`.
+- Archivos afectados: `sarevat/juniper/discovery.py`, `tests/test_juniper_discovery.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 12 pruebas de descubrimiento/detección Junos aprobadas, Ruff y `git diff --check` aprobados. No se enviaron comandos de configuración al EX2200.
+
 ### 2026-09-11 09:23:23 -04:00
 
 - Se añadió el plan de bootstrap Cisco por serial y su acceso en la GUI: valida hostname, dominio, usuario, password, enable secret, interfaz, IPv4, máscara y RSA; la vista previa incluye IP de gestión, VTY, RSA y SSH.

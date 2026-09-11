@@ -53,6 +53,8 @@ def _parse_version(output: str) -> tuple[str, str, str, str]:
     hostname = re.search(r"(?im)^Hostname:\s*(\S+)", output)
     model = re.search(r"(?im)^Model:\s*(\S+)", output)
     version = re.search(r"(?im)^Junos:\s*(\S+)", output)
+    if not version:
+        version = re.search(r"(?im)^JUNOS\s+.*?\[([^\]\s]+)\]", output)
     serial = re.search(r"(?im)^Serial Number:\s*(\S+)", output)
     return (
         hostname.group(1) if hostname else "desconocido",
