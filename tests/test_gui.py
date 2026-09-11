@@ -11,12 +11,13 @@ from sarevat.gui import (
     build_vlsm_base_network,
     build_vlsm_requests,
     export_vlsm_outputs,
+    inventory_overview,
     network_summary,
     profile_connection_target,
     widget_exists,
 )
 from sarevat.inventory import ConnectionProfile
-from sarevat.models import DeviceKind, NetworkPlatform
+from sarevat.models import DeviceFacts, DeviceKind, InterfaceState, NetworkPlatform
 from sarevat.validators import ValidationError
 from sarevat.vlsm import SubnetRequest, automatic_gateway_policy, calculate_vlsm
 
@@ -118,6 +119,28 @@ def test_widget_exists_handles_a_destroyed_control_without_raising() -> None:
             raise tk.TclError("invalid command name")
 
     assert not widget_exists(DestroyedWidget())
+
+
+def test_inventory_overview_preserves_read_only_discovery_details() -> None:
+    facts = DeviceFacts(
+        interfaces={
+            "ge-0/0/1": InterfaceState("ge-0/0/1", status="down", protocol="down"),
+            "ge-0/0/0": InterfaceState("ge-0/0/0", "192.0.2.10", "up", "up"),
+        },
+        vlans={20: "voice", 10: "users"},
+        capabilities={"interfaces", "vlans"},
+        warnings=["Serial no disponible"],
+    )
+
+    assert inventory_overview(facts) == {
+        "capabilities": ("interfaces", "vlans"),
+        "interfaces": (
+            ("ge-0/0/0", "192.0.2.10", "up", "up"),
+            ("ge-0/0/1", "-", "down", "down"),
+        ),
+        "vlans": (("10", "users"), ("20", "voice")),
+        "warnings": ("Serial no disponible",),
+    }
 
 
 def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:

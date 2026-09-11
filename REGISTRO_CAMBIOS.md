@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-11 12:31:04 -04:00
+
+- Se ampliÃ³ la vista de equipo descubierto para presentar capacidades, interfaces, VLAN y advertencias devueltas por el adaptador; la pantalla de conexiÃ³n ahora se denomina "Nueva conexiÃ³n de red".
+- Motivo: hacer visibles los datos ya obtenidos del EX2200 y de futuras plataformas sin habilitar aÃºn configuraciÃ³n remota fuera de Cisco.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `185 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. Esta entrega sigue siendo de solo lectura para Junos.
+
 ### 2026-09-11 12:08:50 -04:00
 
 - Se protegió el callback asíncrono de conexión para no actualizar controles Tkinter destruidos si el usuario cambia de vista o cierra la pantalla mientras la conexión termina; una sesión abierta en ese caso se cierra sin quedar huérfana.

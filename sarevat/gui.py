@@ -68,6 +68,21 @@ def widget_exists(widget: tk.Misc) -> bool:
         return False
 
 
+def inventory_overview(facts: DeviceFacts) -> dict[str, tuple[tuple[str, ...], ...] | tuple[str, ...]]:
+    """Convierte el descubrimiento en filas seguras para la vista de inventario."""
+    interfaces = tuple(
+        (item.name, item.ip_address or "-", item.status, item.protocol)
+        for _, item in sorted(facts.interfaces.items())
+    )
+    vlans = tuple((str(vlan_id), name) for vlan_id, name in sorted(facts.vlans.items()))
+    return {
+        "capabilities": tuple(sorted(facts.capabilities)),
+        "interfaces": interfaces,
+        "vlans": vlans,
+        "warnings": tuple(facts.warnings),
+    }
+
+
 def build_vlsm_base_network(address: str, prefix: str) -> str:
     """Combina los controles de red y mascara en una red IPv4 valida."""
     value = address.strip()
@@ -413,7 +428,7 @@ class SarevatGui(tk.Tk):
         profile = self.pending_profile
         self.pending_profile = None
         self._page_header(
-            "Nueva conexión Cisco",
+            "Nueva conexión de red",
             (
                 f"Perfil seleccionado: {profile.name}. Las credenciales se piden al conectar y no se guardan."
                 if profile
@@ -666,6 +681,7 @@ class SarevatGui(tk.Tk):
         return f"No se pudo conectar: {error}"
 
     def _show_facts(self, facts: Any) -> None:
+        overview = inventory_overview(facts)
         details = ttk.Frame(self.content, style="Card.TFrame", padding=(18, 15))
         details.pack(anchor="w", fill="x", pady=(16, 0))
         ttk.Label(
@@ -685,6 +701,51 @@ class SarevatGui(tk.Tk):
             ttk.Label(
                 details, text=f"{label}: {value}", background="#ffffff", foreground="#526777"
             ).pack(anchor="w", pady=1)
+
+        capabilities = overview["capabilities"]
+        if capabilities:
+            ttk.Label(
+                details,
+                text=f"Capacidades detectadas: {', '.join(capabilities)}",
+                background="#ffffff",
+                foreground="#526777",
+                wraplength=820,
+            ).pack(anchor="w", pady=(7, 0))
+
+        def add_table(title: str, columns: tuple[str, ...], rows: tuple[tuple[str, ...], ...]) -> None:
+            if not rows:
+                return
+            ttk.Label(
+                details,
+                text=title,
+                background="#ffffff",
+                foreground="#102a43",
+                font=("Segoe UI", 10, "bold"),
+            ).pack(anchor="w", pady=(12, 4))
+            tree = ttk.Treeview(details, columns=columns, show="headings", height=min(len(rows), 8))
+            for column in columns:
+                tree.heading(column, text=column)
+                tree.column(column, anchor="w", width=150, stretch=True)
+            for row in rows:
+                tree.insert("", "end", values=row)
+            tree.pack(anchor="w", fill="x")
+
+        add_table(
+            "Interfaces descubiertas",
+            ("Interfaz", "IPv4", "Estado", "Protocolo"),
+            overview["interfaces"],
+        )
+        add_table("VLAN descubiertas", ("ID", "Nombre"), overview["vlans"])
+
+        warnings = overview["warnings"]
+        if warnings:
+            ttk.Label(
+                details,
+                text="Advertencias: " + " | ".join(warnings),
+                background="#ffffff",
+                foreground="#9c2f19",
+                wraplength=820,
+            ).pack(anchor="w", pady=(12, 0))
 
     def _device_tools_page(self) -> None:
         if not self.session:
