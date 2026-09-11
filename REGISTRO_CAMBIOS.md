@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-11 12:08:50 -04:00
+
+- Se protegió el callback asíncrono de conexión para no actualizar controles Tkinter destruidos si el usuario cambia de vista o cierra la pantalla mientras la conexión termina; una sesión abierta en ese caso se cierra sin quedar huérfana.
+- Motivo: la prueba con el EX2200 expuso un `TclError` al intentar reactivar el botón de conexión después de destruir su página.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 11 pruebas de GUI aprobadas, Ruff y `git diff --check` aprobados. No se enviaron comandos de configuración al EX2200.
+
 ### 2026-09-11 11:55:54 -04:00
 
 - Se amplió el parser Junos para reconocer la versión entre corchetes que publica el EX2200, como `JUNOS Base OS boot [12.3R12.4]`.

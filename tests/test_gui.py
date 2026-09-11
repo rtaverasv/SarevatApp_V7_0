@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tkinter as tk
 from types import SimpleNamespace
 
 import pytest
@@ -12,6 +13,7 @@ from sarevat.gui import (
     export_vlsm_outputs,
     network_summary,
     profile_connection_target,
+    widget_exists,
 )
 from sarevat.inventory import ConnectionProfile
 from sarevat.models import DeviceKind, NetworkPlatform
@@ -108,6 +110,14 @@ def test_gui_connection_target_does_not_require_a_saved_profile() -> None:
         profile_connection_target(ssh_profile) == "192.0.2.10"
     )
     assert profile_connection_target(serial_profile) == "COM3"
+
+
+def test_widget_exists_handles_a_destroyed_control_without_raising() -> None:
+    class DestroyedWidget:
+        def winfo_exists(self) -> bool:
+            raise tk.TclError("invalid command name")
+
+    assert not widget_exists(DestroyedWidget())
 
 
 def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:

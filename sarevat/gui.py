@@ -60,6 +60,14 @@ from sarevat.vlsm import (
 VLSM_MASK_OPTIONS = tuple(f"/{prefix}" for prefix in range(33))
 
 
+def widget_exists(widget: tk.Misc) -> bool:
+    """Evita que un callback asíncrono actualice un control ya destruido."""
+    try:
+        return bool(widget.winfo_exists())
+    except tk.TclError:
+        return False
+
+
 def build_vlsm_base_network(address: str, prefix: str) -> str:
     """Combina los controles de red y mascara en una red IPv4 valida."""
     value = address.strip()
@@ -551,6 +559,12 @@ class SarevatGui(tk.Tk):
             )
 
         def done(result: object, button: tk.Button, text: tk.StringVar) -> None:
+            if not widget_exists(button):
+                if not isinstance(result, Exception):
+                    self._run_session_worker(
+                        lambda: self._close_session_connection(result), lambda _: None
+                    )
+                return
             button.configure(state="normal")
             if isinstance(result, Exception):
                 text.set(self._connection_error(result))
