@@ -35,6 +35,7 @@ from sarevat.cisco.services import (
 from sarevat.compliance import ComplianceStatus, audit_running_config, export_compliance_json
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
+from sarevat.juniper.services import build_management_candidate
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport, NetworkPlatform
 from sarevat.platforms import adapter_for, detect_ssh_platform, detection_from_netmiko, device_type_for
@@ -781,6 +782,12 @@ class SarevatGui(tk.Tk):
             ttk.Button(card, text="Actualizar estado e inventario", command=self._refresh_session_facts).pack(
                 anchor="w"
             )
+            if self.session.platform is NetworkPlatform.JUNIPER_JUNOS:
+                ttk.Button(
+                    card,
+                    text="Preparar candidato de gestión (vista previa)",
+                    command=self._junos_management_candidate_page,
+                ).pack(anchor="w", pady=(8, 0))
             ttk.Button(self.content, text="Desconectar sesión", command=self._disconnect_session).pack(
                 anchor="w", pady=(16, 0)
             )
@@ -1027,6 +1034,73 @@ class SarevatGui(tk.Tk):
         except ValidationError as exc:
             messagebox.showinfo("Endurecimiento", str(exc), parent=self)
 
+    def _junos_management_candidate_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        self._clear()
+        self._page_header(
+            "Candidato de gestión Junos",
+            "Se valida y muestra un candidato. La aplicación remota aún permanece bloqueada.",
+        )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        form.pack(fill="x")
+        initial_hostname = session.facts.hostname if session.facts.hostname != "desconocido" else ""
+        hostname = tk.StringVar(value=initial_hostname)
+        interface = tk.StringVar(value=next(iter(session.facts.interfaces), ""))
+        address = tk.StringVar()
+        netmask = tk.StringVar(value="255.255.255.0")
+        fields = (
+            ("Hostname", hostname),
+            ("Interfaz descubierta", interface),
+            ("IPv4 de gestión", address),
+            ("Máscara IPv4", netmask),
+        )
+        for label, value in fields:
+            ttk.Label(
+                form, text=label, background="#ffffff", foreground="#526777", font=("Segoe UI", 10)
+            ).pack(anchor="w")
+            if value is interface:
+                ttk.Combobox(
+                    form,
+                    textvariable=value,
+                    values=tuple(session.facts.interfaces),
+                    state="readonly",
+                ).pack(fill="x", pady=(2, 8))
+            else:
+                ttk.Entry(form, textvariable=value).pack(fill="x", pady=(2, 8))
+
+        ttk.Label(
+            form,
+            text=(
+                "El candidato no será enviado ni guardado. La futura ejecución requerirá una "
+                "prueba autorizada con commit confirmed."
+            ),
+            background="#ffffff",
+            foreground="#526777",
+            wraplength=680,
+        ).pack(anchor="w", pady=(4, 8))
+
+        def prepare() -> None:
+            try:
+                self._review_and_execute_plan(
+                    build_management_candidate(
+                        {
+                            "hostname": hostname.get(),
+                            "interface": interface.get(),
+                            "address": address.get(),
+                            "netmask": netmask.get(),
+                        },
+                        session.facts,
+                    )
+                )
+            except ValidationError as exc:
+                messagebox.showwarning("Datos por corregir", str(exc), parent=self)
+
+        ttk.Button(
+            form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare
+        ).pack(fill="x", pady=(8, 0))
+
     def _simple_plan_form(
         self,
         title: str,
@@ -1113,10 +1187,31 @@ class SarevatGui(tk.Tk):
         commands.insert("1.0", "\n".join(redact_text(command) for command in plan.commands))
         commands.config(state="disabled")
         commands.pack(fill="both", expand=True, pady=(12, 0))
+        manual_workflow = plan.metadata.get("manual_workflow")
+        if manual_workflow:
+            ttk.Label(
+                review,
+                text="Flujo planificado: " + "  →  ".join(manual_workflow),
+                background="#f6f8fb",
+                foreground="#526777",
+                wraplength=700,
+            ).pack(anchor="w", pady=(10, 0))
         status = tk.StringVar(value="Validando con dry-run: no se enviarán comandos.")
         ttk.Label(
             review, textvariable=status, background="#f6f8fb", foreground="#526777", wraplength=700
         ).pack(anchor="w", pady=(10, 0))
+
+        if plan.metadata.get("preview_only"):
+            status.set(
+                "Candidato validado. La aplicación Junos está bloqueada hasta completar la prueba autorizada."
+            )
+            ttk.Button(
+                review,
+                text="Aplicación remota no habilitada",
+                style="Primary.TButton",
+                state="disabled",
+            ).pack(fill="x", pady=(12, 0))
+            return
 
         def after_dry(result: object) -> None:
             if isinstance(result, Exception):

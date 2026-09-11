@@ -42,8 +42,9 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 ## Capacidades entregadas
 
 - Base multi-fabricante local: la GUI puede detectar por SSH Cisco IOS/IOS-XE,
-  Junos y Huawei VRP. Junos ofrece inventario de solo lectura; Huawei y marcas
-  no certificadas no reciben comandos de descubrimiento ni configuración.
+  Junos y Huawei VRP. Junos ofrece inventario de solo lectura y candidatos de
+  gestión en vista previa; Huawei y marcas no certificadas no reciben comandos
+  de descubrimiento ni configuración.
 - Conexión Cisco por SSH IPv4 y consola serial; la consola muestra puerto,
   baudrate y autenticación opcional en lugar de pedir una IP.
 - Descubrimiento de equipo, inventario de interfaces y consola libre auditada.
@@ -101,9 +102,10 @@ comandos Cisco a un Juniper ni inferir la marca solo por el tipo de equipo.
    de detección y regresión por adaptador, y una matriz de modelos/versiones
    certificados.
 
-Estado local inicial: modelo de plataforma, detección SSH por Netmiko y
+Estado local actual: modelo de plataforma, detección SSH por Netmiko y
 adaptadores separados ya existen. Cisco conserva su ejecutor actual; Junos
-solo realiza inventario de lectura; Huawei puede ser identificado pero no tiene
+realiza inventario de lectura y puede generar candidatos de gestión validados
+sin ruta de aplicación remota. Huawei puede ser identificado pero no tiene
 inventario ni configuración certificados. Ninguna de estas capacidades declara
 compatibilidad real hasta completar la aceptación con hardware autorizado.
 

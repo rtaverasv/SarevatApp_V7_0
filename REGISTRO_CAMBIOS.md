@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-11 12:42:28 -04:00
+
+- Se incorporó el candidato de gestión Junos: valida hostname, interfaz descubierta, IPv4 y máscara; muestra los comandos `set` y el flujo proyectado de `configure private`, comprobación y `commit confirmed`.
+- La GUI permite preparar el candidato desde una sesión Junos, pero bloquea explícitamente su aplicación remota y no abre una consola de cambios.
+- Motivo: avanzar el soporte multi-fabricante con una vista previa segura antes de certificar comandos y recuperación en el EX2200 autorizado.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `187 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. No se enviaron comandos de configuración a ningún equipo Junos.
+
 ### 2026-09-11 12:31:04 -04:00
 
 - Se ampliÃ³ la vista de equipo descubierto para presentar capacidades, interfaces, VLAN y advertencias devueltas por el adaptador; la pantalla de conexiÃ³n ahora se denomina "Nueva conexiÃ³n de red".
