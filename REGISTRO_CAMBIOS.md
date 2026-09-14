@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 11:15:49 -04:00
+
+- Se añadió la capa Junos de prechecks de solo lectura, detección de diagnósticos y vista del procedimiento transaccional con `commit check` y `commit confirmed`.
+- Motivo: adelantar la validación local del flujo Junos mientras el EX2200 no está disponible, sin introducir una ruta que pueda enviar configuración.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_transaction.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `190 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. Los prechecks admiten únicamente comandos declarados de consulta; no se conectó ni modificó hardware.
+
 ### 2026-09-11 12:42:28 -04:00
 
 - Se incorporó el candidato de gestión Junos: valida hostname, interfaz descubierta, IPv4 y máscara; muestra los comandos `set` y el flujo proyectado de `configure private`, comprobación y `commit confirmed`.

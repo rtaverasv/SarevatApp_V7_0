@@ -104,10 +104,12 @@ comandos Cisco a un Juniper ni inferir la marca solo por el tipo de equipo.
 
 Estado local actual: modelo de plataforma, detección SSH por Netmiko y
 adaptadores separados ya existen. Cisco conserva su ejecutor actual; Junos
-realiza inventario de lectura y puede generar candidatos de gestión validados
-sin ruta de aplicación remota. Huawei puede ser identificado pero no tiene
-inventario ni configuración certificados. Ninguna de estas capacidades declara
-compatibilidad real hasta completar la aceptación con hardware autorizado.
+realiza inventario de lectura, genera candidatos de gestión validados y cuenta
+con prechecks de solo lectura, parser de errores y contrato de `commit check` /
+`commit confirmed`. No existe ruta de aplicación remota. Huawei puede ser
+identificado pero no tiene inventario ni configuración certificados. Ninguna de
+estas capacidades declara compatibilidad real hasta completar la aceptación con
+hardware autorizado.
 
 El asistente serial se construirá sobre esta base. La primera entrega del
 asistente conservará alcance Cisco, pero quedará aislada en el adaptador
