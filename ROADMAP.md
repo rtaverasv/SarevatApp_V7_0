@@ -42,9 +42,9 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 ## Capacidades entregadas
 
 - Base multi-fabricante local: la GUI puede detectar por SSH Cisco IOS/IOS-XE,
-  Junos y Huawei VRP. Junos ofrece inventario de solo lectura y candidatos de
-  gestión en vista previa; Huawei y marcas no certificadas no reciben comandos
-  de descubrimiento ni configuración.
+  Junos y Huawei VRP. Junos ofrece inventario y prechecks de solo lectura,
+  además de candidatos de gestión en vista previa; Huawei y marcas no
+  certificadas no reciben comandos de descubrimiento ni configuración.
 - Conexión Cisco por SSH IPv4 y consola serial; la consola muestra puerto,
   baudrate y autenticación opcional en lugar de pedir una IP.
 - Descubrimiento de equipo, inventario de interfaces y consola libre auditada.
@@ -105,11 +105,11 @@ comandos Cisco a un Juniper ni inferir la marca solo por el tipo de equipo.
 Estado local actual: modelo de plataforma, detección SSH por Netmiko y
 adaptadores separados ya existen. Cisco conserva su ejecutor actual; Junos
 realiza inventario de lectura, genera candidatos de gestión validados y cuenta
-con prechecks de solo lectura, parser de errores y contrato de `commit check` /
-`commit confirmed`. No existe ruta de aplicación remota. Huawei puede ser
-identificado pero no tiene inventario ni configuración certificados. Ninguna de
-estas capacidades declara compatibilidad real hasta completar la aceptación con
-hardware autorizado.
+con prechecks de solo lectura visibles en la GUI, parser de errores y contrato
+de `commit check` / `commit confirmed`. No existe ruta de aplicación remota.
+Huawei puede ser identificado pero no tiene inventario ni configuración
+certificados. Ninguna de estas capacidades declara compatibilidad real hasta
+completar la aceptación con hardware autorizado.
 
 El asistente serial se construirá sobre esta base. La primera entrega del
 asistente conservará alcance Cisco, pero quedará aislada en el adaptador

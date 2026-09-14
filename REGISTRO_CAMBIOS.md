@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:02:49 -04:00
+
+- Se expusieron en la vista previa Junos los prechecks de solo lectura: la GUI consulta los comandos declarados, muestra evidencia redactada y registra la operación sin abrir configuración remota.
+- Motivo: completar la validación observable del candidato contra el EX2200 antes de implementar cualquier aplicación con `commit confirmed`.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `192 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. El botón solo usa prechecks de consulta; la aplicación remota Junos sigue deshabilitada.
+
 ### 2026-09-14 15:55:42 -04:00
 
 - Se corrigió el descubrimiento Junos para incluir la interfaz de gestión dedicada `me0.0`; el candidato de gestión la acepta y la prioriza cuando tiene una IPv4 activa.

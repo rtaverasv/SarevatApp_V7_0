@@ -36,6 +36,7 @@ from sarevat.compliance import ComplianceStatus, audit_running_config, export_co
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.juniper.services import build_management_candidate, preferred_management_interface
+from sarevat.juniper.transaction import JunosPrecheckReport, run_prechecks
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport, NetworkPlatform
 from sarevat.platforms import adapter_for, detect_ssh_platform, detection_from_netmiko, device_type_for
@@ -82,6 +83,18 @@ def inventory_overview(facts: DeviceFacts) -> dict[str, tuple[tuple[str, ...], .
         "vlans": vlans,
         "warnings": tuple(facts.warnings),
     }
+
+
+def format_junos_prechecks(report: JunosPrecheckReport) -> str:
+    """Presenta evidencia de consultas Junos sin revelar secretos."""
+    lines = ["PRECHECKS JUNOS · SOLO LECTURA"]
+    if report.errors:
+        lines.extend(f"ERROR: {redact_text(error)}" for error in report.errors)
+    else:
+        lines.append("Resultado: aprobado; no se detectaron diagnósticos Junos.")
+    for command, output in report.outputs.items():
+        lines.extend(("", f"> {command}", redact_text(output).strip() or "(sin salida)"))
+    return "\n".join(lines)
 
 
 def build_vlsm_base_network(address: str, prefix: str) -> str:
@@ -1205,6 +1218,59 @@ class SarevatGui(tk.Tk):
             status.set(
                 "Candidato validado. La aplicación Junos está bloqueada hasta completar la prueba autorizada."
             )
+            evidence = tk.Text(
+                review,
+                height=9,
+                width=88,
+                wrap="word",
+                background="#ffffff",
+                foreground="#102a43",
+                relief="solid",
+                padx=10,
+                pady=8,
+            )
+            evidence.config(state="disabled")
+
+            def finish_prechecks(result: object) -> None:
+                if not widget_exists(review):
+                    return
+                precheck_button.state(["!disabled"])
+                if isinstance(result, Exception):
+                    status.set(f"No se pudieron consultar los prechecks: {redact_text(str(result))}")
+                    return
+                if not isinstance(result, JunosPrecheckReport):
+                    status.set("Resultado de prechecks no reconocido.")
+                    return
+                session.audit.event(
+                    "junos_prechecks",
+                    result="approved" if result.ok else "errors",
+                    commands=tuple(result.outputs),
+                )
+                status.set(
+                    "Prechecks aprobados: solo se ejecutaron consultas."
+                    if result.ok
+                    else "Prechecks con advertencias: revisa la evidencia antes de continuar."
+                )
+                evidence.config(state="normal")
+                evidence.delete("1.0", "end")
+                evidence.insert("1.0", format_junos_prechecks(result))
+                evidence.config(state="disabled")
+                evidence.pack(fill="both", expand=True, pady=(10, 0))
+
+            def start_prechecks() -> None:
+                precheck_button.state(["disabled"])
+                status.set("Consultando prechecks Junos de solo lectura...")
+                self._run_session_worker(
+                    lambda: run_prechecks(session.connection, plan), finish_prechecks
+                )
+
+            precheck_button = ttk.Button(
+                review,
+                text="Ejecutar prechecks de solo lectura",
+                style="Primary.TButton",
+                command=start_prechecks,
+            )
+            precheck_button.pack(fill="x", pady=(12, 0))
             ttk.Button(
                 review,
                 text="Aplicación remota no habilitada",

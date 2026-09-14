@@ -11,12 +11,14 @@ from sarevat.gui import (
     build_vlsm_base_network,
     build_vlsm_requests,
     export_vlsm_outputs,
+    format_junos_prechecks,
     inventory_overview,
     network_summary,
     profile_connection_target,
     widget_exists,
 )
 from sarevat.inventory import ConnectionProfile
+from sarevat.juniper.transaction import JunosPrecheckReport
 from sarevat.models import DeviceFacts, DeviceKind, InterfaceState, NetworkPlatform
 from sarevat.validators import ValidationError
 from sarevat.vlsm import SubnetRequest, automatic_gateway_policy, calculate_vlsm
@@ -141,6 +143,19 @@ def test_inventory_overview_preserves_read_only_discovery_details() -> None:
         "vlans": (("10", "users"), ("20", "voice")),
         "warnings": ("Serial no disponible",),
     }
+
+
+def test_gui_formats_junos_prechecks_without_configuration_output() -> None:
+    report = JunosPrecheckReport(
+        outputs={"show interfaces terse me0.0": "me0.0 up up inet 192.168.1.50/24"},
+        errors=(),
+    )
+
+    text = format_junos_prechecks(report)
+
+    assert "SOLO LECTURA" in text
+    assert "aprobado" in text
+    assert "show interfaces terse me0.0" in text
 
 
 def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:
