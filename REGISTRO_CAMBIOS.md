@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:07:07 -04:00
+
+- Se registró la aceptación parcial con hardware Junos real: SSH de gestión, descubrimiento de hechos básicos, candidato bloqueado y prechecks de hostname e interfaz aprobados.
+- Motivo: actualizar el roadmap con evidencia real y delimitar exactamente lo que fue validado antes de habilitar cualquier aplicación remota.
+- Archivos afectados: `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: conectividad SSH TCP y prechecks desde SarevatApp aprobados. No se enviaron comandos `set`, `configure`, `load`, `commit` ni cambios persistentes al equipo Junos. No se registran IPs ni identificadores de laboratorio.
+
 ### 2026-09-14 16:02:49 -04:00
 
 - Se expusieron en la vista previa Junos los prechecks de solo lectura: la GUI consulta los comandos declarados, muestra evidencia redactada y registra la operación sin abrir configuración remota.

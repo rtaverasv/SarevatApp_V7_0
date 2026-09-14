@@ -33,7 +33,7 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 |---|---|---|---|
 | 0. Línea base y control de cambios | Completada | Repositorio unificado, `main` actualizado, respaldo `backup/main-antes-gui`, changelog y CI activos. | Mantener la comparación antes de integrar fuentes externas. |
 | 1. Confianza y regresión automatizada | Completada localmente | 163 pruebas; validadores, VLSM, escáner, CLI, SSH/serial simulados, servicios, executor, rollback y reportes. Ruff, Bandit y `pip check` aprobados. | Añadir pruebas visuales de GUI cuando exista un entorno gráfico automatizable. |
-| 2. Laboratorio y compatibilidad | Pendiente P0 | Preflight, guía de piloto y comportamiento fail-fast preparados. | Probar SSH, serial, dry-run, checkpoint, rollback, AAA y SNMPv3 en equipos autorizados; crear matriz IOS/IOS-XE, modelo, licencia y capacidades. |
+| 2. Laboratorio y compatibilidad | Parcial (Junos) | Un equipo Junos autorizado validó SSH, descubrimiento, candidato y prechecks de solo lectura por SarevatApp. | Probar cambios Junos recuperables y el flujo Cisco: serial, dry-run, checkpoint, rollback, AAA y SNMPv3; crear matriz de compatibilidad. |
 | 3. Inventario y flujo reutilizable | Completada localmente | Perfiles sin secretos, grupos, borradores redactados, diff, historial y reportes JSON/CSV. La GUI y PowerShell los comparten. | Confirmar persistencia y rutas de `runtime/` en la laptop y en equipos de uso real. |
 | 4. Seguridad, plantillas y cumplimiento | Completada localmente | NTP/syslog por sitio, SSH, SNMPv3, AAA local protegido, hardening, auditoría de solo lectura, referencia segura y detección de drift. | Validar comandos y postchecks por plataforma; documentar excepciones por versión IOS. |
 | 5. Lotes y experiencia de usuario | Parcial | Motor gradual, concurrencia, ventana, pausa por fallo e historial; GUI Alpha funcional con navegación, sesión única, VLSM, escáner e inventario. | Validar la GUI con laboratorio y decidir cuándo habilitar ejecución real y controlada de lotes. |
@@ -110,6 +110,16 @@ de `commit check` / `commit confirmed`. No existe ruta de aplicación remota.
 Huawei puede ser identificado pero no tiene inventario ni configuración
 certificados. Ninguna de estas capacidades declara compatibilidad real hasta
 completar la aceptación con hardware autorizado.
+
+### Evidencia de aceptación Junos en laboratorio
+
+El 14 de septiembre de 2026 se validó con un equipo Junos autorizado, por SSH
+directo a su interfaz de gestión, que SarevatApp descubre la plataforma y sus
+hechos básicos. También se validaron un candidato bloqueado de vista previa y
+los prechecks de consulta de hostname e interfaz. No se enviaron comandos de
+configuración, no se ejecutó `commit` y la aplicación remota Junos sigue
+deshabilitada. Los identificadores y direcciones del laboratorio no se
+conservan en el repositorio.
 
 El asistente serial se construirá sobre esta base. La primera entrega del
 asistente conservará alcance Cisco, pero quedará aislada en el adaptador
