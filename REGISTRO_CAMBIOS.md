@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:12:48 -04:00
+
+- Se añadió el ejecutor de preparación Junos para unificar dry-run, prechecks, reporte y auditoría con el resto de SarevatApp.
+- El ejecutor bloquea por código cualquier llamada con `dry_run=False`: conserva las consultas de precheck y devuelve un estado bloqueado sin exponer métodos de configuración remota.
+- Motivo: preparar el siguiente tramo de transacción segura sin ampliar la autoridad de la GUI ni arriesgar el equipo Junos validado.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `194 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. La prueba del bloqueo usa una conexión simulada de solo lectura; no se contactó ni modificó hardware.
+
 ### 2026-09-14 16:07:07 -04:00
 
 - Se registró la aceptación parcial con hardware Junos real: SSH de gestión, descubrimiento de hechos básicos, candidato bloqueado y prechecks de hostname e interfaz aprobados.
