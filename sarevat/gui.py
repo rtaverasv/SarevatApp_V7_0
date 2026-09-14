@@ -1376,7 +1376,8 @@ class SarevatGui(tk.Tk):
                 text="Aplicación remota no habilitada",
                 style="Primary.TButton",
                 command=apply_junos,
-            ).pack(fill="x", pady=(12, 0))
+            )
+            apply_junos_button.pack(fill="x", pady=(12, 0))
             apply_junos_button.configure(text="Aplicar prueba Junos tras prechecks aprobados")
             apply_junos_button.state(["disabled"])
             return
