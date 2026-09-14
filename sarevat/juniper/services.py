@@ -76,7 +76,7 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
             "management_interface": interface,
             "manual_workflow": (
                 "configure private",
-                "load merge terminal",
+                "load set terminal",
                 "show | compare",
                 "commit check",
                 "commit confirmed 5",

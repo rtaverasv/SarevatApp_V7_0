@@ -83,7 +83,7 @@ def test_junos_executor_commits_only_after_second_session_verification(tmp_path:
     audit.close()
 
     assert report.status is ResultStatus.APPLIED
-    assert connection.timing_commands[:2] == ["configure private", "load merge terminal"]
+    assert connection.timing_commands[:2] == ["configure private", "load set terminal"]
     assert "commit check" in connection.timing_commands
     assert "commit confirmed 5" in connection.timing_commands
     assert connection.timing_commands[-1] == "commit"
@@ -105,3 +105,4 @@ def test_junos_executor_leaves_confirmed_change_to_revert_when_reconnect_fails(t
     assert "revertira" in report.message
     assert "commit confirmed 5" in connection.timing_commands
     assert "commit" not in connection.timing_commands
+    assert connection.timing_commands[-1] == "rollback 0"

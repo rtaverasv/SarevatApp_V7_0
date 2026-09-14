@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:45:14 -04:00
+
+- Se corrigio la carga interactiva Junos para usar `load set terminal`, que es el formato compatible con los comandos `set` generados por SarevatApp.
+- Ante un fallo despues de abrir el candidato privado, el ejecutor ahora envia `rollback 0` para descartar el candidato no confirmado; si ya existe `commit confirmed`, no ejecuta el `commit` final y Junos conserva su reversion automatica.
+- Motivo: una prueba autorizada detecto un `syntax error` antes de cualquier commit, lo que permitio corregir la ruta sin modificar la configuracion activa.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: pruebas Junos enfocadas aprobadas; no se envio una segunda aplicacion a hardware durante esta correccion.
+
 ### 2026-09-14 16:34:48 -04:00
 
 - Se corrigio el montaje del boton de aplicacion Junos: se conserva la referencia al control antes de empaquetarlo para que pueda actualizar su etiqueta y estado tras los prechecks.
@@ -24,7 +32,7 @@ Cada entrada debe incluir:
 
 ### 2026-09-14 16:26:01 -04:00
 
-- Se habilito la ruta Junos de prueba de laboratorio en la GUI y el ejecutor: aceptacion escrita, `configure private`, `load merge terminal`, `commit check`, `commit confirmed`, postchecks, segunda sesion SSH y `commit` final.
+- Se habilito la ruta Junos de prueba de laboratorio en la GUI y el ejecutor: aceptacion escrita, `configure private`, carga interactiva, `commit check`, `commit confirmed`, postchecks, segunda sesion SSH y `commit` final.
 - Si la verificacion independiente falla, el ejecutor no confirma la configuracion; Junos revierte automaticamente al agotarse el temporizador de confirmacion.
 - Motivo: convertir el candidato y los prechecks ya validados en una transaccion comprobable, sin permitir confirmacion final sin evidencia de conectividad nueva.
 - Archivos afectados: `sarevat/gui.py`, `sarevat/juniper/services.py`, `sarevat/juniper/transaction.py`, pruebas Junos y este roadmap.

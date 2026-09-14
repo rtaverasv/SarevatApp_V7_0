@@ -75,7 +75,7 @@ def transaction_preview(plan: CommandPlan, *, confirm_minutes: int = 5) -> tuple
         raise ValueError("El tiempo de commit confirmed debe estar entre 1 y 10 minutos.")
     return (
         "configure private",
-        "load merge terminal",
+        "load set terminal",
         *plan.commands,
         "<Ctrl-D para terminar la carga>",
         "show | compare",
@@ -112,10 +112,10 @@ class JunosExecutor:
 
     def _apply_candidate(self, plan: CommandPlan, report: ExecutionReport, confirm_minutes: int) -> None:
         transcript = self._timing("configure private")
-        transcript += self._timing("load merge terminal")
+        transcript += self._timing("load set terminal")
         # Junos termina la carga interactiva con Ctrl-D; nunca se usa ``configure`` global.
         transcript += self._timing("\n".join(plan.commands) + "\n\x04")
-        report.results.append(CommandResult("load merge terminal", redact_text(transcript), True))
+        report.results.append(CommandResult("load set terminal", redact_text(transcript), True))
         compare = str(self.connection.send_command("show | compare"))
         self._check_output(compare)
         report.results.append(CommandResult("show | compare", redact_text(compare), True))
@@ -145,6 +145,7 @@ class JunosExecutor:
             dry_run=dry_run,
             commands=[redact_command(command) for command in plan.commands],
         )
+        candidate_started = False
         try:
             prechecks = run_prechecks(self.connection, plan)
             report.precheck_output = {
@@ -175,6 +176,7 @@ class JunosExecutor:
                 report.message = "Aplicacion Junos cancelada: falta aceptacion explicita de laboratorio."
                 return report
             self.audit.event("junos_apply_authorized", name=plan.name, confirm_minutes=confirm_minutes)
+            candidate_started = True
             self._apply_candidate(plan, report, confirm_minutes)
             for command in plan.postchecks:
                 output = str(self.connection.send_command(command))
@@ -202,6 +204,15 @@ class JunosExecutor:
                     )
                 )
             self.audit.event("junos_plan_failed", stage="apply", error=redact_text(str(exc)))
+            if candidate_started:
+                try:
+                    cleanup = str(self.connection.send_command_timing("rollback 0", read_timeout=30))
+                    report.results.append(CommandResult("rollback 0", redact_text(cleanup), True))
+                    self.audit.event("junos_candidate_discarded", name=plan.name)
+                except Exception as cleanup_error:
+                    self.audit.event(
+                        "junos_candidate_cleanup_failed", error=redact_text(str(cleanup_error))
+                    )
         finally:
             report.finished_at = datetime.now(UTC)
             self.audit.event(
