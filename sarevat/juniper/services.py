@@ -10,16 +10,28 @@ from sarevat.models import CommandPlan, DeviceFacts
 from sarevat.validators import ValidationError, validate_hostname, validate_ipv4, validate_netmask
 
 _INTERFACE_RE = re.compile(
-    r"^(?P<base>(?:(?:ge|xe|et)-\d+/\d+/\d+)|(?:vlan|irb|lo0))(?:\.(?P<unit>\d+))?$",
+    r"^(?P<base>(?:(?:ge|xe|et)-\d+/\d+/\d+)|(?:vlan|irb|lo0|me0))(?:\.(?P<unit>\d+))?$",
     re.IGNORECASE,
 )
+
+
+def preferred_management_interface(facts: DeviceFacts) -> str:
+    """Prioriza la interfaz de gestión activa que descubrió el equipo."""
+    items = tuple(facts.interfaces.items())
+    for name, state in items:
+        if name.casefold().startswith("me0.") and state.ip_address:
+            return name
+    for name, state in items:
+        if state.ip_address:
+            return name
+    return next(iter(facts.interfaces), "")
 
 
 def _junos_interface(value: str, facts: DeviceFacts) -> tuple[str, str, str]:
     name = value.strip()
     match = _INTERFACE_RE.fullmatch(name)
     if not match:
-        raise ValidationError("Selecciona una interfaz Junos descubierta, como ge-0/0/0 o vlan.0.")
+        raise ValidationError("Selecciona una interfaz Junos descubierta, como me0.0, ge-0/0/0 o vlan.0.")
     available = {item.casefold() for item in facts.interfaces}
     if name.casefold() not in available:
         raise ValidationError("La interfaz no aparece en el inventario descubierto del equipo.")

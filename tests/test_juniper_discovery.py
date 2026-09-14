@@ -22,6 +22,7 @@ JUNOS Base OS Software Suite [12.3R12.4]
 INTERFACES = """Interface               Admin Link Proto    Local                 Remote
 ge-0/0/0                up    up
 ge-0/0/1                up    down
+me0.0                   up    up   inet     192.168.1.50/24
 vlan.0                  up    up   inet     192.0.2.10/24
 """
 VLANS = """Name                             Tag          Interfaces
@@ -42,6 +43,7 @@ class Connection:
 def test_junos_parsers_normalize_interfaces_and_vlans() -> None:
     interfaces = parse_interfaces_terse(INTERFACES)
     assert interfaces["ge-0/0/0"].l3_up is False
+    assert interfaces["me0.0"].ip_address == "192.168.1.50"
     assert interfaces["vlan.0"].ip_address == "192.0.2.10"
     assert parse_vlans(VLANS) == {10: "USUARIOS", 1: "default-switch"}
 

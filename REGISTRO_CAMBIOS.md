@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 15:55:42 -04:00
+
+- Se corrigió el descubrimiento Junos para incluir la interfaz de gestión dedicada `me0.0`; el candidato de gestión la acepta y la prioriza cuando tiene una IPv4 activa.
+- Motivo: la aceptación SSH real con el EX2200 confirmó que la IP de gestión está en `me0.0`, pero la GUI solo listaba interfaces de datos, `vlan`, `irb` y loopback.
+- Archivos afectados: `sarevat/juniper/discovery.py`, `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_discovery.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: `191 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. La validación real fue exclusivamente de descubrimiento SSH; no se enviaron cambios al EX2200.
+
 ### 2026-09-14 11:15:49 -04:00
 
 - Se añadió la capa Junos de prechecks de solo lectura, detección de diagnósticos y vista del procedimiento transaccional con `commit check` y `commit confirmed`.

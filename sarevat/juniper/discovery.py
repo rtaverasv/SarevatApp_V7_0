@@ -29,7 +29,7 @@ def parse_interfaces_terse(output: str) -> dict[str, InterfaceState]:
         name, admin, link = fields[:3]
         if not (
             re.match(r"^[A-Za-z][\w-]+-\d+/\d+/\d+(?:\.\d+)?$", name)
-            or re.match(r"^(?:vlan|irb|lo0)\.\d+$", name, re.I)
+            or re.match(r"^(?:vlan|irb|lo0|me0)\.\d+$", name, re.I)
         ):
             continue
         ip_address = next(

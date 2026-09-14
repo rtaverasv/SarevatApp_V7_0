@@ -35,7 +35,7 @@ from sarevat.cisco.services import (
 from sarevat.compliance import ComplianceStatus, audit_running_config, export_compliance_json
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
-from sarevat.juniper.services import build_management_candidate
+from sarevat.juniper.services import build_management_candidate, preferred_management_interface
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport, NetworkPlatform
 from sarevat.platforms import adapter_for, detect_ssh_platform, detection_from_netmiko, device_type_for
@@ -1047,7 +1047,7 @@ class SarevatGui(tk.Tk):
         form.pack(fill="x")
         initial_hostname = session.facts.hostname if session.facts.hostname != "desconocido" else ""
         hostname = tk.StringVar(value=initial_hostname)
-        interface = tk.StringVar(value=next(iter(session.facts.interfaces), ""))
+        interface = tk.StringVar(value=preferred_management_interface(session.facts))
         address = tk.StringVar()
         netmask = tk.StringVar(value="255.255.255.0")
         fields = (
