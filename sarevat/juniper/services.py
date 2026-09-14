@@ -58,6 +58,10 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
         interfaces=frozenset({interface}),
         prechecks=("show configuration system host-name", f"show interfaces terse {interface}"),
         postchecks=("show configuration system host-name", f"show interfaces terse {interface}"),
+        postcheck_expectations={
+            "show configuration system host-name": (hostname,),
+            f"show interfaces terse {interface}": (str(address),),
+        },
         warnings=(
             "Vista previa solamente: SarevatApp no enviara este candidato al equipo Junos.",
             "En una futura prueba autorizada se usara configure private, commit check, "
@@ -67,6 +71,9 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
         metadata={
             "platform": "juniper_junos",
             "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": str(address),
+            "management_interface": interface,
             "manual_workflow": (
                 "configure private",
                 "load merge terminal",

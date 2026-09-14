@@ -36,7 +36,12 @@ from sarevat.compliance import ComplianceStatus, audit_running_config, export_co
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.juniper.services import build_management_candidate, preferred_management_interface
-from sarevat.juniper.transaction import JunosPrecheckReport, run_prechecks
+from sarevat.juniper.transaction import (
+    JUNOS_LAB_ACCEPTANCE,
+    JunosExecutor,
+    JunosPrecheckReport,
+    run_prechecks,
+)
 from sarevat.logging_utils import AuditLogger
 from sarevat.models import CommandPlan, DeviceFacts, DeviceKind, ExecutionReport, NetworkPlatform
 from sarevat.platforms import adapter_for, detect_ssh_platform, detection_from_netmiko, device_type_for
@@ -247,13 +252,14 @@ class DeviceSession:
     """Conexion abierta para una sesion GUI; se cierra al desconectar."""
 
     connection: Any
-    executor: CiscoExecutor | None
+    executor: CiscoExecutor | JunosExecutor | None
     facts: DeviceFacts
     device_kind: DeviceKind
     audit: AuditLogger
     platform: NetworkPlatform
     transport: str
     profile_id: str | None = None
+    reconnect_params: dict[str, Any] | None = None
 
 
 class SarevatGui(tk.Tk):
@@ -661,15 +667,24 @@ class SarevatGui(tk.Tk):
             adapter = adapter_for(detection.platform)
             facts = adapter.discover(connection)
             audit = AuditLogger(self.runtime / "logs")
-            executor = (
-                CiscoExecutor(connection, audit=audit, backup_directory=self.runtime / "backups")
-                if adapter.supports_configuration
-                else None
-            )
+            executor: CiscoExecutor | JunosExecutor | None = None
+            if detection.platform.is_cisco:
+                executor = CiscoExecutor(connection, audit=audit, backup_directory=self.runtime / "backups")
+            elif detection.platform is NetworkPlatform.JUNIPER_JUNOS:
+                executor = JunosExecutor(connection, audit=audit)
             audit.event("gui_connection_opened", target=params.get("host", params.get("serial_settings")))
             transport = "serial" if "serial_settings" in params else "ssh"
+            reconnect_params = dict(connection_params) if transport == "ssh" else None
             return DeviceSession(
-                connection, executor, facts, device_kind, audit, facts.platform, transport, profile_id
+                connection,
+                executor,
+                facts,
+                device_kind,
+                audit,
+                facts.platform,
+                transport,
+                profile_id,
+                reconnect_params,
             )
         except Exception:
             disconnect = getattr(connection, "disconnect", None)
@@ -1154,6 +1169,39 @@ class SarevatGui(tk.Tk):
             fill="x", pady=(8, 0)
         )
 
+    @staticmethod
+    def _verify_junos_management_session(session: DeviceSession, plan: CommandPlan) -> bool:
+        """Abre una segunda sesion SSH efimera antes del commit final de Junos."""
+        if session.transport != "ssh" or not session.reconnect_params:
+            return False
+        address = str(plan.metadata.get("management_address", ""))
+        interface = str(plan.metadata.get("management_interface", ""))
+        if not address or not interface:
+            return False
+        params = dict(session.reconnect_params)
+        params["host"] = address
+        second_connection: Any | None = None
+        try:
+            second_connection = ConnectHandler(**params)
+            hostname = str(second_connection.send_command("show configuration system host-name"))
+            interface_state = str(second_connection.send_command(f"show interfaces terse {interface}"))
+            expected_hostname = plan.postcheck_expectations.get(
+                "show configuration system host-name", ()
+            )
+            expected_address = plan.postcheck_expectations.get(
+                f"show interfaces terse {interface}", ()
+            )
+            return all(value.casefold() in hostname.casefold() for value in expected_hostname) and all(
+                value.casefold() in interface_state.casefold() for value in expected_address
+            )
+        except Exception as exc:
+            session.audit.event("junos_second_session_failed", error=redact_text(str(exc)))
+            return False
+        finally:
+            disconnect = getattr(second_connection, "disconnect", None)
+            if callable(disconnect):
+                disconnect()
+
     def _review_and_execute_plan(self, plan: CommandPlan) -> None:
         if not self.session:
             return
@@ -1256,12 +1304,64 @@ class SarevatGui(tk.Tk):
                 evidence.insert("1.0", format_junos_prechecks(result))
                 evidence.config(state="disabled")
                 evidence.pack(fill="both", expand=True, pady=(10, 0))
+                if result.ok:
+                    apply_junos_button.state(["!disabled"])
 
             def start_prechecks() -> None:
                 precheck_button.state(["disabled"])
                 status.set("Consultando prechecks Junos de solo lectura...")
                 self._run_session_worker(
                     lambda: run_prechecks(session.connection, plan), finish_prechecks
+                )
+
+            def apply_junos() -> None:
+                if not isinstance(session.executor, JunosExecutor):
+                    status.set("No se encontro un ejecutor Junos para esta sesion.")
+                    return
+                if not messagebox.askyesno(
+                    "Prueba Junos autorizada",
+                    "Se aplicara un commit confirmed de 5 minutos. Conserva consola fisica recuperable. "
+                    "SarevatApp verificara una segunda sesion SSH antes del commit final. Continuar?",
+                    parent=review,
+                ):
+                    return
+                phrase = simpledialog.askstring(
+                    "Aceptacion de laboratorio",
+                    f"Escribe {JUNOS_LAB_ACCEPTANCE} para autorizar esta prueba controlada:",
+                    parent=review,
+                )
+                if phrase != JUNOS_LAB_ACCEPTANCE:
+                    status.set("Aplicacion Junos cancelada: no se recibio la frase de autorizacion.")
+                    return
+                apply_junos_button.state(["disabled"])
+                status.set("Aplicando commit confirmed y verificando una segunda sesion SSH...")
+
+                def finish_apply(result: object) -> None:
+                    if not widget_exists(review):
+                        return
+                    if isinstance(result, Exception):
+                        status.set(f"Aplicacion Junos detenida: {redact_text(str(result))}")
+                        return
+                    if not isinstance(result, ExecutionReport):
+                        status.set("Resultado de aplicacion Junos no reconocido.")
+                        return
+                    self._save_report(result)
+                    status.set(result.message)
+                    if result.success and self.session is session:
+                        self._run_session_worker(
+                            lambda: adapter_for(session.platform).discover(session.connection),
+                            self._update_session_facts,
+                        )
+
+                self._run_session_worker(
+                    lambda: session.executor.execute(
+                        plan,
+                        dry_run=False,
+                        lab_acceptance=phrase,
+                        confirm=lambda _: True,
+                        verify_management=lambda: self._verify_junos_management_session(session, plan),
+                    ),
+                    finish_apply,
                 )
 
             precheck_button = ttk.Button(
@@ -1271,12 +1371,14 @@ class SarevatGui(tk.Tk):
                 command=start_prechecks,
             )
             precheck_button.pack(fill="x", pady=(12, 0))
-            ttk.Button(
+            apply_junos_button = ttk.Button(
                 review,
                 text="Aplicación remota no habilitada",
                 style="Primary.TButton",
-                state="disabled",
+                command=apply_junos,
             ).pack(fill="x", pady=(12, 0))
+            apply_junos_button.configure(text="Aplicar prueba Junos tras prechecks aprobados")
+            apply_junos_button.state(["disabled"])
             return
 
         def after_dry(result: object) -> None:

@@ -107,7 +107,8 @@ adaptadores separados ya existen. Cisco conserva su ejecutor actual; Junos
 realiza inventario de lectura, genera candidatos de gestión validados y cuenta
 con prechecks de solo lectura visibles en la GUI, parser de errores, contrato
 de `commit check` / `commit confirmed` y un ejecutor que bloquea por código
-todo intento no-dry-run. No existe ruta de aplicación remota.
+todo intento no-dry-run sin aceptación expresa. La ruta de laboratorio usa
+`commit confirmed` y una segunda sesión SSH antes de confirmar el cambio.
 Huawei puede ser identificado pero no tiene inventario ni configuración
 certificados. Ninguna de estas capacidades declara compatibilidad real hasta
 completar la aceptación con hardware autorizado.
@@ -125,6 +126,16 @@ conservan en el repositorio.
 El asistente serial se construirá sobre esta base. La primera entrega del
 asistente conservará alcance Cisco, pero quedará aislada en el adaptador
 Cisco para que el soporte Junos no obligue a rehacerla.
+
+### Estado actual del ejecutor Junos
+
+La GUI dispone ahora de una ruta de aplicacion de laboratorio: exige la frase
+de aceptacion, usa `configure private`, carga el candidato, ejecuta `commit
+check` y `commit confirmed 5`, y abre una segunda sesion SSH contra la gestion
+propuesta antes del `commit` final. Si la segunda sesion o un postcheck falla,
+no se confirma el cambio y Junos lo revierte al vencer el temporizador. Esta
+ruta fue verificada con conexiones simuladas; falta aceptacion de escritura con
+hardware autorizado antes de declararla compatible en produccion.
 
 ## Próximo desarrollo: asistente de equipo nuevo por serial
 

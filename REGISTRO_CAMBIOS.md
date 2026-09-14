@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:26:01 -04:00
+
+- Se habilito la ruta Junos de prueba de laboratorio en la GUI y el ejecutor: aceptacion escrita, `configure private`, `load merge terminal`, `commit check`, `commit confirmed`, postchecks, segunda sesion SSH y `commit` final.
+- Si la verificacion independiente falla, el ejecutor no confirma la configuracion; Junos revierte automaticamente al agotarse el temporizador de confirmacion.
+- Motivo: convertir el candidato y los prechecks ya validados en una transaccion comprobable, sin permitir confirmacion final sin evidencia de conectividad nueva.
+- Archivos afectados: `sarevat/gui.py`, `sarevat/juniper/services.py`, `sarevat/juniper/transaction.py`, pruebas Junos y este roadmap.
+- Comprobaciones: `196 passed` con `pytest -q`; Ruff, Bandit, `pip check` y `git diff --check` aprobados. No se contacto ni modifico hardware en esta entrega.
+
 ### 2026-09-14 16:12:48 -04:00
 
 - Se añadió el ejecutor de preparación Junos para unificar dry-run, prechecks, reporte y auditoría con el resto de SarevatApp.

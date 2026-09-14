@@ -55,7 +55,7 @@ def test_gui_connection_params_support_safe_ssh_detection_and_junos() -> None:
         )
 
 
-def test_junos_gui_session_is_inventory_only(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_junos_gui_session_has_guarded_executor(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     class Connection:
         def send_command(self, command: str, **_: object) -> str:
             return {
@@ -75,7 +75,8 @@ def test_junos_gui_session_is_inventory_only(monkeypatch: pytest.MonkeyPatch, tm
     session = SarevatGui._open_session(holder, params, DeviceKind.SWITCH)
     try:
         assert session.platform is NetworkPlatform.JUNIPER_JUNOS
-        assert session.executor is None
+        assert session.executor is not None
+        assert session.reconnect_params and session.reconnect_params["password"] == "temporary"
         assert session.facts.model == "ex2200-24t"
     finally:
         session.audit.close()
