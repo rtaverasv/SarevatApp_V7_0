@@ -116,8 +116,7 @@ class JunosExecutor:
         # Junos termina la carga interactiva con Ctrl-D; nunca se usa ``configure`` global.
         transcript += self._timing("\n".join(plan.commands) + "\n\x04")
         report.results.append(CommandResult("load set terminal", redact_text(transcript), True))
-        compare = str(self.connection.send_command("show | compare"))
-        self._check_output(compare)
+        compare = self._timing("show | compare")
         report.results.append(CommandResult("show | compare", redact_text(compare), True))
         checked = self._timing("commit check")
         report.results.append(CommandResult("commit check", redact_text(checked), True))
@@ -179,8 +178,7 @@ class JunosExecutor:
             candidate_started = True
             self._apply_candidate(plan, report, confirm_minutes)
             for command in plan.postchecks:
-                output = str(self.connection.send_command(command))
-                self._check_output(output)
+                output = self._timing(command)
                 self._verify_postcheck(command, output, plan.postcheck_expectations.get(command, ()))
                 report.postcheck_output[command] = redact_text(output)
             if verify_management is None or not verify_management():

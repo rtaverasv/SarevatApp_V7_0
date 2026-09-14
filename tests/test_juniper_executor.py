@@ -29,6 +29,12 @@ class FakeJunosConnection:
         self.timing_commands.append(command)
         if "\x04" in command:
             self.changed = True
+        if command in {
+            "show | compare",
+            "show configuration system host-name",
+            "show interfaces terse me0.0",
+        }:
+            return self.send_command(command)
         return "commit complete" if command.startswith("commit") else "ok"
 
 
@@ -86,6 +92,8 @@ def test_junos_executor_commits_only_after_second_session_verification(tmp_path:
     assert connection.timing_commands[:2] == ["configure private", "load set terminal"]
     assert "commit check" in connection.timing_commands
     assert "commit confirmed 5" in connection.timing_commands
+    assert "show configuration system host-name" in connection.timing_commands
+    assert "show interfaces terse me0.0" in connection.timing_commands
     assert connection.timing_commands[-1] == "commit"
 
 

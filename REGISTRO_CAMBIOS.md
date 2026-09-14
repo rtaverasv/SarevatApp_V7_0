@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 16:51:31 -04:00
+
+- Se cambiaron los postchecks y la comparacion Junos al canal interactivo de Netmiko, evitando la deteccion de patron de eco que falla dentro del modo de configuracion Junos.
+- Motivo: la primera transaccion llego a `commit confirmed` pero Netmiko no pudo leer el postcheck; no hubo `commit` final y el temporizador de Junos conserva la reversion automatica.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: pruebas Junos enfocadas aprobadas; la suite completa se ejecutara antes de publicar. No se envio una nueva aplicacion a hardware.
+
 ### 2026-09-14 16:45:14 -04:00
 
 - Se corrigio la carga interactiva Junos para usar `load set terminal`, que es el formato compatible con los comandos `set` generados por SarevatApp.
