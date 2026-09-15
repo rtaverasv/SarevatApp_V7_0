@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from sarevat.juniper.services import (
+    build_existing_vlan_access_candidate,
     build_management_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -97,4 +98,25 @@ def test_junos_vlan_access_candidate_rejects_existing_vlan_and_management_port()
     with pytest.raises(ValidationError, match="puerto fisico"):
         build_vlan_access_candidate(
             {"vlan_name": "VOICE", "vlan_id": "30", "interface": "me0.0"}, _facts(), "192.0.2.10"
+        )
+
+
+def test_junos_existing_vlan_access_candidate_reuses_discovered_vlan_only() -> None:
+    facts = _facts()
+    facts.vlans[20] = "USERS"
+    plan = build_existing_vlan_access_candidate(
+        {"vlan_name": "USERS", "interface": "ge-0/0/0"}, facts, "192.0.2.10"
+    )
+
+    assert plan.commands == (
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching port-mode access",
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members USERS",
+    )
+    assert "set vlans" not in "\n".join(plan.commands)
+
+
+def test_junos_existing_vlan_access_candidate_rejects_unknown_vlan() -> None:
+    with pytest.raises(ValidationError, match="VLAN existente"):
+        build_existing_vlan_access_candidate(
+            {"vlan_name": "USERS", "interface": "ge-0/0/0"}, _facts(), "192.0.2.10"
         )

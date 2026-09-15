@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 10:18:00 -04:00
+
+- Se añadió el candidato separado para asociar una VLAN ya descubierta a un puerto access, sin recrear, borrar ni renombrar VLANs.
+- Motivo: el inventario detectó una VLAN existente; el flujo de creación debe rechazarla para evitar sobrescrituras y ofrecer una operación de asignación explícita.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 201 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envió configuración al equipo.
+
 ### 2026-09-15 10:02:00 -04:00
 
 - Se ajustó el postcheck del candidato VLAN/access para EX2200: la segunda sesión SSH valida nombre, ID y puerto mediante `show vlans`, y registra de forma diferenciada cualquier discrepancia semántica.

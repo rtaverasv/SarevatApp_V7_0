@@ -151,3 +151,57 @@ def build_vlan_access_candidate(
             ),
         },
     )
+
+
+def build_existing_vlan_access_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Asigna una VLAN descubierta a un puerto access sin crear ni editar la VLAN."""
+    vlan_name = str(data.get("vlan_name", "")).strip()
+    matching_ids = [
+        vlan_id for vlan_id, name in facts.vlans.items() if name.casefold() == vlan_name.casefold()
+    ]
+    if len(matching_ids) != 1:
+        raise ValidationError("Selecciona una VLAN existente del inventario actual.")
+    vlan_id = matching_ids[0]
+    interface, base_interface, unit = _junos_interface(str(data.get("interface", "")), facts)
+    if unit != "0" or not re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", base_interface, re.I):
+        raise ValidationError(
+            "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
+        )
+    address = str(validate_ipv4(management_address))
+    return CommandPlan(
+        name="Asignar VLAN existente a puerto access Junos",
+        service="junos_existing_vlan_access",
+        commands=(
+            f"set interfaces {base_interface} unit 0 family ethernet-switching port-mode access",
+            f"set interfaces {base_interface} unit 0 family ethernet-switching vlan members {vlan_name}",
+        ),
+        interfaces=frozenset({interface}),
+        prechecks=("show vlans", f"show interfaces terse {interface}"),
+        postchecks=("show vlans",),
+        postcheck_expectations={
+            "show vlans": (vlan_name, str(vlan_id), f"{base_interface}.0"),
+        },
+        warnings=(
+            "Este candidato no crea, borra ni renombra VLANs existentes.",
+            "El puerto seleccionado dejara de pertenecer a su VLAN access actual.",
+            "No selecciones un puerto de enlace, trunk, consola o gestion.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH e inventario desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )

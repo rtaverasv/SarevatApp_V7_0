@@ -37,6 +37,7 @@ from sarevat.compliance import ComplianceStatus, audit_running_config, export_co
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.juniper.services import (
+    build_existing_vlan_access_candidate,
     build_management_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -831,6 +832,11 @@ class SarevatGui(tk.Tk):
                     text="Preparar VLAN y puerto access (vista previa)",
                     command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
+                    text="Asignar VLAN existente a puerto access (vista previa)",
+                    command=self._junos_existing_vlan_access_page,
+                ).pack(anchor="w", pady=(8, 0))
             ttk.Button(self.content, text="Desconectar sesión", command=self._disconnect_session).pack(
                 anchor="w", pady=(16, 0)
             )
@@ -1193,6 +1199,73 @@ class SarevatGui(tk.Tk):
                         {
                             "vlan_name": vlan_name.get(),
                             "vlan_id": vlan_id.get(),
+                            "interface": interface.get(),
+                        },
+                        session.facts,
+                        management_address,
+                    )
+                )
+            except ValidationError as exc:
+                messagebox.showwarning("Datos por corregir", str(exc), parent=self)
+
+        ttk.Button(form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare).pack(
+            fill="x", pady=(8, 0)
+        )
+
+    def _junos_existing_vlan_access_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        self._clear()
+        self._page_header(
+            "Asignar VLAN existente a puerto access",
+            "Usa una VLAN descubierta. Este flujo nunca crea, borra ni renombra una VLAN.",
+        )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        form.pack(fill="x")
+        vlan_options = {f"{vlan_id} · {name}": name for vlan_id, name in sorted(session.facts.vlans.items())}
+        if not vlan_options:
+            ttk.Label(
+                form,
+                text="No hay VLANs descubiertas. Actualiza el inventario antes de continuar.",
+                background="#ffffff",
+                foreground="#9c2f19",
+            ).pack(anchor="w")
+            return
+        ports = tuple(
+            name
+            for name in session.facts.interfaces
+            if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", name, re.I)
+        )
+        selected_vlan = tk.StringVar(value=next(iter(vlan_options)))
+        interface = tk.StringVar(value=ports[0] if ports else "")
+        ttk.Label(form, text="VLAN existente", background="#ffffff", foreground="#526777").pack(anchor="w")
+        ttk.Combobox(
+            form, textvariable=selected_vlan, values=tuple(vlan_options), state="readonly"
+        ).pack(fill="x", pady=(2, 8))
+        ttk.Label(form, text="Puerto fisico access", background="#ffffff", foreground="#526777").pack(
+            anchor="w"
+        )
+        ttk.Combobox(form, textvariable=interface, values=ports, state="readonly").pack(
+            fill="x", pady=(2, 8)
+        )
+        ttk.Label(
+            form,
+            text="Confirma que el puerto no es un uplink o trunk antes de aplicar el candidato.",
+            background="#ffffff",
+            foreground="#9c2f19",
+            wraplength=680,
+        ).pack(anchor="w", pady=(4, 8))
+
+        def prepare() -> None:
+            try:
+                management_address = (
+                    str(session.reconnect_params.get("host", "")) if session.reconnect_params else ""
+                )
+                self._review_and_execute_plan(
+                    build_existing_vlan_access_candidate(
+                        {
+                            "vlan_name": vlan_options[selected_vlan.get()],
                             "interface": interface.get(),
                         },
                         session.facts,
