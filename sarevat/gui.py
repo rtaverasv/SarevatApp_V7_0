@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import tkinter as tk
 from collections.abc import Callable
@@ -35,7 +36,11 @@ from sarevat.cisco.services import (
 from sarevat.compliance import ComplianceStatus, audit_running_config, export_compliance_json
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
-from sarevat.juniper.services import build_management_candidate, preferred_management_interface
+from sarevat.juniper.services import (
+    build_management_candidate,
+    build_vlan_access_candidate,
+    preferred_management_interface,
+)
 from sarevat.juniper.transaction import (
     JUNOS_LAB_ACCEPTANCE,
     JunosExecutor,
@@ -805,8 +810,8 @@ class SarevatGui(tk.Tk):
             ttk.Label(
                 card,
                 text=(
-                    "Esta plataforma solo tiene descubrimiento de lectura certificado. "
-                    "Las funciones Cisco y la consola de cambios permanecen bloqueadas."
+                    "Esta plataforma tiene inventario de lectura y candidatos Junos certificados. "
+                    "Los cambios solo se habilitan despues de prechecks y aceptacion explicita."
                 ),
                 background="#ffffff",
                 foreground="#526777",
@@ -820,6 +825,11 @@ class SarevatGui(tk.Tk):
                     card,
                     text="Preparar candidato de gestión (vista previa)",
                     command=self._junos_management_candidate_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
+                    text="Preparar VLAN y puerto access (vista previa)",
+                    command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
             ttk.Button(self.content, text="Desconectar sesión", command=self._disconnect_session).pack(
                 anchor="w", pady=(16, 0)
@@ -1134,6 +1144,68 @@ class SarevatGui(tk.Tk):
             form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare
         ).pack(fill="x", pady=(8, 0))
 
+    def _junos_vlan_access_candidate_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        self._clear()
+        self._page_header(
+            "VLAN nueva y puerto access Junos",
+            "Crea solamente una VLAN nueva y asigna un puerto fisico. No uses un uplink o trunk.",
+        )
+        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        form.pack(fill="x")
+        vlan_name = tk.StringVar()
+        vlan_id = tk.StringVar()
+        ports = tuple(
+            name
+            for name in session.facts.interfaces
+            if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", name, re.I)
+        )
+        interface = tk.StringVar(value=ports[0] if ports else "")
+        for label, value in (("Nombre de VLAN", vlan_name), ("ID de VLAN (2-4094)", vlan_id)):
+            ttk.Label(form, text=label, background="#ffffff", foreground="#526777").pack(anchor="w")
+            ttk.Entry(form, textvariable=value).pack(fill="x", pady=(2, 8))
+        ttk.Label(form, text="Puerto fisico access", background="#ffffff", foreground="#526777").pack(
+            anchor="w"
+        )
+        ttk.Combobox(form, textvariable=interface, values=ports, state="readonly").pack(
+            fill="x", pady=(2, 8)
+        )
+        ttk.Label(
+            form,
+            text=(
+                "El puerto seleccionado dejara de pertenecer a su VLAN access actual. "
+                "Confirma su uso fisico antes de aplicar."
+            ),
+            background="#ffffff",
+            foreground="#9c2f19",
+            wraplength=680,
+        ).pack(anchor="w", pady=(4, 8))
+
+        def prepare() -> None:
+            try:
+                management_address = (
+                    str(session.reconnect_params.get("host", "")) if session.reconnect_params else ""
+                )
+                self._review_and_execute_plan(
+                    build_vlan_access_candidate(
+                        {
+                            "vlan_name": vlan_name.get(),
+                            "vlan_id": vlan_id.get(),
+                            "interface": interface.get(),
+                        },
+                        session.facts,
+                        management_address,
+                    )
+                )
+            except ValidationError as exc:
+                messagebox.showwarning("Datos por corregir", str(exc), parent=self)
+
+        ttk.Button(form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare).pack(
+            fill="x", pady=(8, 0)
+        )
+
     def _simple_plan_form(
         self,
         title: str,
@@ -1180,25 +1252,19 @@ class SarevatGui(tk.Tk):
         if session.transport != "ssh" or not session.reconnect_params:
             return False
         address = str(plan.metadata.get("management_address", ""))
-        interface = str(plan.metadata.get("management_interface", ""))
-        if not address or not interface:
+        if not address or not plan.postchecks:
             return False
         params = dict(session.reconnect_params)
         params["host"] = address
         second_connection: Any | None = None
         try:
             second_connection = ConnectHandler(**params)
-            hostname = str(second_connection.send_command("show configuration system host-name"))
-            interface_state = str(second_connection.send_command(f"show interfaces terse {interface}"))
-            expected_hostname = plan.postcheck_expectations.get(
-                "show configuration system host-name", ()
-            )
-            expected_address = plan.postcheck_expectations.get(
-                f"show interfaces terse {interface}", ()
-            )
-            return all(value.casefold() in hostname.casefold() for value in expected_hostname) and all(
-                value.casefold() in interface_state.casefold() for value in expected_address
-            )
+            for command in plan.postchecks:
+                output = str(second_connection.send_command(command))
+                expected = plan.postcheck_expectations.get(command, ())
+                if not all(value.casefold() in output.casefold() for value in expected):
+                    return False
+            return True
         except Exception as exc:
             session.audit.event("junos_second_session_failed", error=redact_text(str(exc)))
             return False

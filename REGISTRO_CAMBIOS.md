@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 09:48:00 -04:00
+
+- Se incorporó el candidato Junos para crear una VLAN nueva y asociarla a un puerto físico en modo access, con validación de VLAN existente, exclusión de puertos de gestión y verificación de postchecks desde una segunda sesión SSH.
+- Motivo: habilitar el primer servicio de switching sobre inventario real sin permitir comandos arbitrarios ni alterar uplinks por error.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 199 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados. No se envió configuración al equipo: el puerto y la VLAN de una prueba remota no se inventan.
+
 ### 2026-09-15 09:32:00 -04:00
 
 - El inventario Junos ahora conserva y muestra todas las direcciones IPv4 detectadas en una misma interfaz, en vez de reemplazar una por otra durante el descubrimiento.

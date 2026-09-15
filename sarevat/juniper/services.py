@@ -13,6 +13,7 @@ _INTERFACE_RE = re.compile(
     r"^(?P<base>(?:(?:ge|xe|et)-\d+/\d+/\d+)|(?:vlan|irb|lo0|me0))(?:\.(?P<unit>\d+))?$",
     re.IGNORECASE,
 )
+_VLAN_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,62}$")
 
 
 def preferred_management_interface(facts: DeviceFacts) -> str:
@@ -81,6 +82,71 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
                 "commit check",
                 "commit confirmed 5",
                 "verificar SSH e IP de gestion",
+                "commit",
+            ),
+        },
+    )
+
+
+def build_vlan_access_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara una VLAN nueva y un puerto access Junos sin modificar el equipo."""
+    vlan_name = str(data.get("vlan_name", "")).strip()
+    if not _VLAN_NAME_RE.fullmatch(vlan_name) or vlan_name.casefold() == "default":
+        raise ValidationError("El nombre de VLAN debe iniciar con letra y usar solo letras, numeros, _ o -.")
+    try:
+        vlan_id = int(str(data.get("vlan_id", "")).strip())
+    except ValueError as exc:
+        raise ValidationError("El ID de VLAN debe ser un numero entre 2 y 4094.") from exc
+    if not 2 <= vlan_id <= 4094:
+        raise ValidationError("El ID de VLAN debe estar entre 2 y 4094.")
+    if vlan_id in facts.vlans or any(
+        name.casefold() == vlan_name.casefold() for name in facts.vlans.values()
+    ):
+        raise ValidationError(
+            "La VLAN indicada ya existe en el inventario; este flujo solo crea VLAN nuevas."
+        )
+    interface, base_interface, unit = _junos_interface(str(data.get("interface", "")), facts)
+    if unit != "0" or not re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", base_interface, re.I):
+        raise ValidationError(
+            "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
+        )
+    address = str(validate_ipv4(management_address))
+    switching_check = f"show ethernet-switching interfaces {base_interface}"
+    return CommandPlan(
+        name="VLAN y puerto access Junos",
+        service="junos_vlan_access",
+        commands=(
+            f"set vlans {vlan_name} vlan-id {vlan_id}",
+            f"set interfaces {base_interface} unit 0 family ethernet-switching port-mode access",
+            f"set interfaces {base_interface} unit 0 family ethernet-switching vlan members {vlan_name}",
+        ),
+        interfaces=frozenset({interface}),
+        prechecks=("show vlans", f"show interfaces terse {interface}"),
+        postchecks=("show vlans", switching_check),
+        postcheck_expectations={
+            "show vlans": (vlan_name, str(vlan_id)),
+            switching_check: (base_interface, vlan_name),
+        },
+        warnings=(
+            "Este candidato crea una VLAN nueva y cambia el puerto seleccionado a modo access.",
+            "No selecciones un puerto de enlace, trunk, consola o gestion.",
+            "La aplicacion requiere prechecks, commit confirmed y verificacion SSH independiente.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH e inventario desde una segunda sesion",
                 "commit",
             ),
         },

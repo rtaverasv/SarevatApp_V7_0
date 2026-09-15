@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from sarevat.juniper.services import build_management_candidate, preferred_management_interface
+from sarevat.juniper.services import (
+    build_management_candidate,
+    build_vlan_access_candidate,
+    preferred_management_interface,
+)
 from sarevat.models import DeviceFacts, InterfaceState, NetworkPlatform
 from sarevat.validators import ValidationError
 
@@ -63,4 +67,33 @@ def test_junos_management_candidate_rejects_an_interface_not_discovered() -> Non
                 "netmask": "255.255.255.0",
             },
             _facts(),
+        )
+
+
+def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() -> None:
+    plan = build_vlan_access_candidate(
+        {"vlan_name": "USERS", "vlan_id": "20", "interface": "ge-0/0/0"},
+        _facts(),
+        "192.0.2.10",
+    )
+
+    assert plan.commands == (
+        "set vlans USERS vlan-id 20",
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching port-mode access",
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members USERS",
+    )
+    assert plan.metadata["management_address"] == "192.0.2.10"
+    assert "show vlans" in plan.postchecks
+
+
+def test_junos_vlan_access_candidate_rejects_existing_vlan_and_management_port() -> None:
+    facts = _facts()
+    facts.vlans[20] = "USERS"
+    with pytest.raises(ValidationError, match="ya existe"):
+        build_vlan_access_candidate(
+            {"vlan_name": "USERS", "vlan_id": "20", "interface": "ge-0/0/0"}, facts, "192.0.2.10"
+        )
+    with pytest.raises(ValidationError, match="puerto fisico"):
+        build_vlan_access_candidate(
+            {"vlan_name": "VOICE", "vlan_id": "30", "interface": "me0.0"}, _facts(), "192.0.2.10"
         )
