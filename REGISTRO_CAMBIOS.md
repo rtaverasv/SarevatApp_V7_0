@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 09:32:00 -04:00
+
+- El inventario Junos ahora conserva y muestra todas las direcciones IPv4 detectadas en una misma interfaz, en vez de reemplazar una por otra durante el descubrimiento.
+- Motivo: una interfaz de gestión puede conservar una IP de respaldo y otra de operación; ambas deben estar visibles antes de preparar servicios de switching.
+- Archivos afectados: `sarevat/models.py`, `sarevat/juniper/discovery.py`, `sarevat/gui.py`, `tests/test_juniper_discovery.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 197 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; solo cambia el inventario de lectura.
+
 ### 2026-09-15 09:18:00 -04:00
 
 - Se agregó scroll vertical a la vista de Equipos e inventario y se limpió el contenedor antes de reconstruirla, para que la vista no duplique tarjetas al volver después de guardar o eliminar un perfil.

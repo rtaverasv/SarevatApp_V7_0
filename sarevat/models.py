@@ -44,6 +44,7 @@ class InterfaceState:
     protocol: str = "unknown"
     mode: str | None = None
     vlan: str | None = None
+    ip_addresses: tuple[str, ...] = ()
 
     @property
     def l3_up(self) -> bool:

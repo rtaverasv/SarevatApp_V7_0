@@ -25,6 +25,10 @@ ge-0/0/1                up    down
 me0.0                   up    up   inet     192.168.1.50/24
 vlan.0                  up    up   inet     192.0.2.10/24
 """
+MULTI_ADDRESS_INTERFACES = """Interface               Admin Link Proto    Local                 Remote
+me0.0                   up    up   inet     192.168.1.50/24
+me0.0                   up    up   inet     192.168.1.60/24
+"""
 VLANS = """Name                             Tag          Interfaces
 USUARIOS                         10           ge-0/0/0.0
 default-switch                   1
@@ -46,6 +50,13 @@ def test_junos_parsers_normalize_interfaces_and_vlans() -> None:
     assert interfaces["me0.0"].ip_address == "192.168.1.50"
     assert interfaces["vlan.0"].ip_address == "192.0.2.10"
     assert parse_vlans(VLANS) == {10: "USUARIOS", 1: "default-switch"}
+
+
+def test_junos_parser_retains_all_ipv4_addresses_on_one_interface() -> None:
+    interface = parse_interfaces_terse(MULTI_ADDRESS_INTERFACES)["me0.0"]
+
+    assert interface.ip_address == "192.168.1.50"
+    assert interface.ip_addresses == ("192.168.1.50", "192.168.1.60")
 
 
 def test_junos_discovery_is_read_only_and_does_not_request_configuration() -> None:

@@ -36,7 +36,19 @@ def parse_interfaces_terse(output: str) -> dict[str, InterfaceState]:
             (item.split("/")[0] for item in fields[3:] if re.match(r"^\d+\.\d+\.\d+\.\d+/\d+$", item)),
             None,
         )
-        interfaces[name] = InterfaceState(name=name, ip_address=ip_address, status=admin, protocol=link)
+        previous = interfaces.get(name)
+        addresses = list(previous.ip_addresses if previous and previous.ip_addresses else ())
+        if previous and previous.ip_address and previous.ip_address not in addresses:
+            addresses.append(previous.ip_address)
+        if ip_address and ip_address not in addresses:
+            addresses.append(ip_address)
+        interfaces[name] = InterfaceState(
+            name=name,
+            ip_address=addresses[0] if addresses else None,
+            status=admin,
+            protocol=link,
+            ip_addresses=tuple(addresses),
+        )
     return interfaces
 
 

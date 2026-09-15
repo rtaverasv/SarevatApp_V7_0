@@ -78,7 +78,12 @@ def widget_exists(widget: tk.Misc) -> bool:
 def inventory_overview(facts: DeviceFacts) -> dict[str, tuple[tuple[str, ...], ...] | tuple[str, ...]]:
     """Convierte el descubrimiento en filas seguras para la vista de inventario."""
     interfaces = tuple(
-        (item.name, item.ip_address or "-", item.status, item.protocol)
+        (
+            item.name,
+            ", ".join(item.ip_addresses) if item.ip_addresses else item.ip_address or "-",
+            item.status,
+            item.protocol,
+        )
         for _, item in sorted(facts.interfaces.items())
     )
     vlans = tuple((str(vlan_id), name) for vlan_id, name in sorted(facts.vlans.items()))
