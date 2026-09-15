@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 08:51:18 -04:00
+
+- Se retiraron los postchecks locales emitidos dentro de la sesion Junos de configuracion despues de `commit confirmed`; la confirmacion ya depende de la segunda sesion SSH independiente, que consulta hostname e interfaz en modo operativo.
+- Motivo: la prueba con hardware demostro que carga, `commit check` y `commit confirmed` funcionan, pero los postchecks de la misma sesion se fragmentaban y producian errores de sintaxis antes del commit final.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 20 pruebas enfocadas de GUI/Junos y Ruff aprobados; la suite completa se ejecutara antes de publicar. No se envio otra configuracion al equipo.
+
 ### 2026-09-15 08:29:35 -04:00
 
 - Se restauraron los controles del Planificador VLSM: el bloque del formulario, scroll, selector de máscara, selector de subredes y cálculo había quedado dentro del método del asistente serial por una indentación incorrecta.

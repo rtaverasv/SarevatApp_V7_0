@@ -183,13 +183,6 @@ class JunosExecutor:
             self.audit.event("junos_apply_authorized", name=plan.name, confirm_minutes=confirm_minutes)
             candidate_started = True
             self._apply_candidate(plan, report, confirm_minutes)
-            for command in plan.postchecks:
-                config_command = (
-                    command if command.startswith("show configuration") else f"run {command}"
-                )
-                output = self._config_command(config_command)
-                self._verify_postcheck(command, output, plan.postcheck_expectations.get(command, ()))
-                report.postcheck_output[command] = redact_text(output)
             if verify_management is None or not verify_management():
                 raise RuntimeError(
                     "No se confirmo una segunda sesion SSH; Junos revertira al vencer commit confirmed."
