@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 10:02:00 -04:00
+
+- Se ajustó el postcheck del candidato VLAN/access para EX2200: la segunda sesión SSH valida nombre, ID y puerto mediante `show vlans`, y registra de forma diferenciada cualquier discrepancia semántica.
+- Motivo: una prueba controlada confirmó que la transacción llegó a `commit confirmed` y la segunda sesión SSH abrió, pero la salida resumida por interfaz no mostró la VLAN con el formato esperado; la aplicación descartó el candidato sin commit final.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 199 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; el candidato de la prueba fue descartado y no quedó configuración persistente.
+
 ### 2026-09-15 09:48:00 -04:00
 
 - Se incorporó el candidato Junos para crear una VLAN nueva y asociarla a un puerto físico en modo access, con validación de VLAN existente, exclusión de puertos de gestión y verificación de postchecks desde una segunda sesión SSH.

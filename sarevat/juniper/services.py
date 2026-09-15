@@ -113,7 +113,6 @@ def build_vlan_access_candidate(
             "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
         )
     address = str(validate_ipv4(management_address))
-    switching_check = f"show ethernet-switching interfaces {base_interface}"
     return CommandPlan(
         name="VLAN y puerto access Junos",
         service="junos_vlan_access",
@@ -124,10 +123,11 @@ def build_vlan_access_candidate(
         ),
         interfaces=frozenset({interface}),
         prechecks=("show vlans", f"show interfaces terse {interface}"),
-        postchecks=("show vlans", switching_check),
+        # EX2200 muestra la pertenencia y el tag de VLAN de forma estable en
+        # ``show vlans``; la salida resumida por interfaz varía entre releases.
+        postchecks=("show vlans",),
         postcheck_expectations={
-            "show vlans": (vlan_name, str(vlan_id)),
-            switching_check: (base_interface, vlan_name),
+            "show vlans": (vlan_name, str(vlan_id), f"{base_interface}.0"),
         },
         warnings=(
             "Este candidato crea una VLAN nueva y cambia el puerto seleccionado a modo access.",

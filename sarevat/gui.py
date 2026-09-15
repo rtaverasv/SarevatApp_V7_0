@@ -1263,6 +1263,11 @@ class SarevatGui(tk.Tk):
                 output = str(second_connection.send_command(command))
                 expected = plan.postcheck_expectations.get(command, ())
                 if not all(value.casefold() in output.casefold() for value in expected):
+                    session.audit.event(
+                        "junos_second_session_postcheck_failed",
+                        command=command,
+                        expected=expected,
+                    )
                     return False
             return True
         except Exception as exc:
