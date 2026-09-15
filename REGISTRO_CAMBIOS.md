@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 08:29:35 -04:00
+
+- Se restauraron los controles del Planificador VLSM: el bloque del formulario, scroll, selector de máscara, selector de subredes y cálculo había quedado dentro del método del asistente serial por una indentación incorrecta.
+- Motivo: la validación visual mostró que VLSM renderizaba solamente el encabezado y dejaba la vista vacía.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: compilación de `gui.py`, 13 pruebas de GUI, Ruff y `git diff --check` aprobados.
+
 ### 2026-09-14 17:15:00 -04:00
 
 - Se sustituyo `configure private` por `configure exclusive` en la transaccion Junos, ya que el equipo de laboratorio rechaza `commit confirmed` en configuracion privada.

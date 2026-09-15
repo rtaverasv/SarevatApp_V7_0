@@ -1649,41 +1649,6 @@ class SarevatGui(tk.Tk):
             ),
         )
 
-    def _serial_bootstrap_page(self) -> None:
-        if not self.session or not self.session.platform.is_cisco:
-            messagebox.showwarning(
-                "Bootstrap serial",
-                "Esta herramienta requiere una sesión Cisco IOS abierta por consola serial.",
-                parent=self,
-            )
-            return
-        if self.session.transport != "serial":
-            messagebox.showwarning(
-                "Bootstrap serial",
-                "Desconecta la sesión SSH y abre una conexión serial para preparar un equipo nuevo.",
-                parent=self,
-            )
-            return
-        self._simple_plan_form(
-            "Equipo nuevo Cisco por serial",
-            (
-                ("Hostname", "hostname"),
-                ("Dominio", "domain"),
-                ("Usuario administrador", "username"),
-                ("Password", "password"),
-                ("Enable secret", "enable_secret"),
-                ("Interfaz de gestion", "interface"),
-                ("IPv4 de gestion", "address"),
-                ("Mascara IPv4", "netmask"),
-                ("RSA (2048/3072/4096)", "rsa_bits"),
-            ),
-            build_serial_bootstrap_plan,
-            hidden={"password", "enable_secret"},
-            notice=(
-                "Vista previa obligatoria. El plan configura IP y SSH en memoria; "
-                "no guarda startup-config automaticamente."
-            ),
-        )
         viewport = ttk.Frame(self.content, style="App.TFrame")
         viewport.pack(fill="both", expand=True)
         scrollbar = ttk.Scrollbar(viewport, orient="vertical")
@@ -1932,6 +1897,42 @@ class SarevatGui(tk.Tk):
 
         choice.bind("<<ComboboxSelected>>", render_subnets)
         ttk.Button(form, text="Validar y calcular", style="Primary.TButton", command=calculate).pack(fill="x")
+
+    def _serial_bootstrap_page(self) -> None:
+        if not self.session or not self.session.platform.is_cisco:
+            messagebox.showwarning(
+                "Bootstrap serial",
+                "Esta herramienta requiere una sesión Cisco IOS abierta por consola serial.",
+                parent=self,
+            )
+            return
+        if self.session.transport != "serial":
+            messagebox.showwarning(
+                "Bootstrap serial",
+                "Desconecta la sesión SSH y abre una conexión serial para preparar un equipo nuevo.",
+                parent=self,
+            )
+            return
+        self._simple_plan_form(
+            "Equipo nuevo Cisco por serial",
+            (
+                ("Hostname", "hostname"),
+                ("Dominio", "domain"),
+                ("Usuario administrador", "username"),
+                ("Password", "password"),
+                ("Enable secret", "enable_secret"),
+                ("Interfaz de gestion", "interface"),
+                ("IPv4 de gestion", "address"),
+                ("Mascara IPv4", "netmask"),
+                ("RSA (2048/3072/4096)", "rsa_bits"),
+            ),
+            build_serial_bootstrap_plan,
+            hidden={"password", "enable_secret"},
+            notice=(
+                "Vista previa obligatoria. El plan configura IP y SSH en memoria; "
+                "no guarda startup-config automaticamente."
+            ),
+        )
 
     def _prepare_vlsm_interface(self, allocation: Any) -> None:
         if not self.session:
