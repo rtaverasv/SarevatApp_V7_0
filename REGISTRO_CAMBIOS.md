@@ -15,6 +15,20 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 09:18:00 -04:00
+
+- Se agregó scroll vertical a la vista de Equipos e inventario y se limpió el contenedor antes de reconstruirla, para que la vista no duplique tarjetas al volver después de guardar o eliminar un perfil.
+- Motivo: la vista podía exceder la ventana y la reconstrucción directa acumulaba una segunda copia de su contenido.
+- Archivos afectados: `sarevat/gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 196 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se modificaron perfiles ni equipos remotos.
+
+### 2026-09-15 08:59:46 -04:00
+
+- Se hizo que toda la fase de configuracion Junos use el canal interactivo sin deteccion de prompt de Netmiko, incluidos comparacion, validacion y commits; la comprobacion decisiva sigue siendo una segunda sesion SSH independiente.
+- Motivo: al cambiar el hostname, el prompt remoto cambia y Netmiko seguia esperando el prompt anterior durante la misma sesion, aun cuando el candidato era valido. Esto producia un falso fallo por patron de prompt.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 196 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-15 08:51:18 -04:00
 
 - Se retiraron los postchecks locales emitidos dentro de la sesion Junos de configuracion despues de `commit confirmed`; la confirmacion ya depende de la segunda sesion SSH independiente, que consulta hostname e interfaz en modo operativo.

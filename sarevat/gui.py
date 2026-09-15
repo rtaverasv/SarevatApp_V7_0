@@ -2098,10 +2098,43 @@ class SarevatGui(tk.Tk):
         result.pack(fill="both", expand=True, pady=(14, 0))
 
     def _inventory_page(self) -> None:
-        self._page_header(
-            "Equipos e inventario",
-            "Organiza perfiles locales, grupos, borradores y lotes sin guardar contraseñas.",
+        # Esta pagina tambien se vuelve a mostrar despues de guardar o eliminar
+        # un perfil. Limpiarla aqui evita que se apilen dos copias de la vista.
+        self._clear()
+        viewport = ttk.Frame(self.content, style="App.TFrame")
+        viewport.pack(fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(viewport, orient="vertical")
+        canvas = tk.Canvas(viewport, background="#f6f8fb", highlightthickness=0)
+        scrollbar.configure(command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        page = ttk.Frame(canvas, style="App.TFrame")
+        page_window = canvas.create_window((0, 0), window=page, anchor="nw")
+
+        def update_scroll_region(_: tk.Event[tk.Misc]) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def resize_page(event: tk.Event[tk.Misc]) -> None:
+            canvas.itemconfigure(page_window, width=event.width)
+
+        page.bind("<Configure>", update_scroll_region)
+        canvas.bind("<Configure>", resize_page)
+        ttk.Button(
+            page,
+            text="←  Volver al menu principal",
+            style="Back.TButton",
+            command=self.show_menu,
+        ).pack(anchor="w")
+        ttk.Label(page, text="Equipos e inventario", style="Title.TLabel").pack(
+            anchor="w", pady=(8, 4)
         )
+        ttk.Label(
+            page,
+            text="Organiza perfiles locales, grupos, borradores y lotes sin guardar contraseñas.",
+            style="Body.TLabel",
+            wraplength=690,
+        ).pack(anchor="w", pady=(0, 20))
         groups = (
             (
                 "Perfiles de equipos",
@@ -2122,7 +2155,7 @@ class SarevatGui(tk.Tk):
                 ),
             ),
         )
-        grid = ttk.Frame(self.content, style="App.TFrame")
+        grid = ttk.Frame(page, style="App.TFrame")
         grid.pack(fill="x", anchor="w")
         for column in range(2):
             grid.columnconfigure(column, weight=1)
@@ -2135,7 +2168,7 @@ class SarevatGui(tk.Tk):
             for label, action in options:
                 ttk.Button(card, text=label, command=action).pack(fill="x", pady=2)
         ttk.Label(
-            self.content,
+            page,
             text=(
                 "Aqui se muestran equipos y grupos cuando existan; "
                 "no se inventan datos en la pantalla inicial."

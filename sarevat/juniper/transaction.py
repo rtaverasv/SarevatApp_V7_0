@@ -111,10 +111,15 @@ class JunosExecutor:
         return output
 
     def _config_command(self, command: str) -> str:
-        """Lee un comando en modo configuracion sin exigir que Netmiko detecte su eco."""
-        output = str(self.connection.send_command(command, cmd_verify=False, read_timeout=45))
-        self._check_output(output)
-        return output
+        """Ejecuta configuracion sin depender del prompt que puede cambiar al renombrar.
+
+        ``send_command`` espera el prompt que Netmiko aprendio al conectar. Un
+        candidato que cambia ``system host-name`` hace que dicho prompt deje de
+        coincidir despues de ``commit confirmed``. El canal de tiempo es
+        deliberadamente agnostico al prompt y la comprobacion real se hace en
+        una segunda sesion SSH antes del commit final.
+        """
+        return self._timing(command)
 
     def _apply_candidate(self, plan: CommandPlan, report: ExecutionReport, confirm_minutes: int) -> None:
         transcript = self._timing("configure exclusive")
