@@ -15,6 +15,14 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-14 17:15:00 -04:00
+
+- Se sustituyo `configure private` por `configure exclusive` en la transaccion Junos, ya que el equipo de laboratorio rechaza `commit confirmed` en configuracion privada.
+- Los comandos de comparacion, commit y postcheck ahora usan el canal de prompt de Netmiko con verificacion de eco desactivada; los postchecks operativos se ejecutan con `run` desde el modo de configuracion.
+- Motivo: la prueba autorizada llego al candidato pero detecto la limitacion real de Junos y una lectura fragmentada; no se realizo `commit` final.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: pruebas Junos enfocadas aprobadas; la suite completa se ejecutara antes de publicar. No se envio una nueva aplicacion a hardware.
+
 ### 2026-09-14 16:51:31 -04:00
 
 - Se cambiaron los postchecks y la comparacion Junos al canal interactivo de Netmiko, evitando la deteccion de patron de eco que falla dentro del modo de configuracion Junos.

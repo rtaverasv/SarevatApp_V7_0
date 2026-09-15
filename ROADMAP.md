@@ -130,7 +130,7 @@ Cisco para que el soporte Junos no obligue a rehacerla.
 ### Estado actual del ejecutor Junos
 
 La GUI dispone ahora de una ruta de aplicacion de laboratorio: exige la frase
-de aceptacion, usa `configure private`, carga el candidato, ejecuta `commit
+de aceptacion, usa `configure exclusive`, carga el candidato, ejecuta `commit
 check` y `commit confirmed 5`, y abre una segunda sesion SSH contra la gestion
 propuesta antes del `commit` final. Si la segunda sesion o un postcheck falla,
 no se confirma el cambio y Junos lo revierte al vencer el temporizador. Esta

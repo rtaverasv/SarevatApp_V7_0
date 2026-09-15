@@ -74,7 +74,7 @@ def transaction_preview(plan: CommandPlan, *, confirm_minutes: int = 5) -> tuple
     if not 1 <= confirm_minutes <= 10:
         raise ValueError("El tiempo de commit confirmed debe estar entre 1 y 10 minutos.")
     return (
-        "configure private",
+        "configure exclusive",
         "load set terminal",
         *plan.commands,
         "<Ctrl-D para terminar la carga>",
@@ -110,17 +110,23 @@ class JunosExecutor:
         self._check_output(output)
         return output
 
+    def _config_command(self, command: str) -> str:
+        """Lee un comando en modo configuracion sin exigir que Netmiko detecte su eco."""
+        output = str(self.connection.send_command(command, cmd_verify=False, read_timeout=45))
+        self._check_output(output)
+        return output
+
     def _apply_candidate(self, plan: CommandPlan, report: ExecutionReport, confirm_minutes: int) -> None:
-        transcript = self._timing("configure private")
+        transcript = self._timing("configure exclusive")
         transcript += self._timing("load set terminal")
         # Junos termina la carga interactiva con Ctrl-D; nunca se usa ``configure`` global.
         transcript += self._timing("\n".join(plan.commands) + "\n\x04")
         report.results.append(CommandResult("load set terminal", redact_text(transcript), True))
-        compare = self._timing("show | compare")
+        compare = self._config_command("show | compare")
         report.results.append(CommandResult("show | compare", redact_text(compare), True))
-        checked = self._timing("commit check")
+        checked = self._config_command("commit check")
         report.results.append(CommandResult("commit check", redact_text(checked), True))
-        confirmed = self._timing(f"commit confirmed {confirm_minutes}")
+        confirmed = self._config_command(f"commit confirmed {confirm_minutes}")
         report.results.append(
             CommandResult(f"commit confirmed {confirm_minutes}", redact_text(confirmed), True)
         )
@@ -178,14 +184,17 @@ class JunosExecutor:
             candidate_started = True
             self._apply_candidate(plan, report, confirm_minutes)
             for command in plan.postchecks:
-                output = self._timing(command)
+                config_command = (
+                    command if command.startswith("show configuration") else f"run {command}"
+                )
+                output = self._config_command(config_command)
                 self._verify_postcheck(command, output, plan.postcheck_expectations.get(command, ()))
                 report.postcheck_output[command] = redact_text(output)
             if verify_management is None or not verify_management():
                 raise RuntimeError(
                     "No se confirmo una segunda sesion SSH; Junos revertira al vencer commit confirmed."
                 )
-            committed = self._timing("commit")
+            committed = self._config_command("commit")
             report.results.append(CommandResult("commit", redact_text(committed), True))
             report.status = ResultStatus.APPLIED
             report.message = "Plan Junos aplicado, verificado por segunda sesion SSH y confirmado."
@@ -204,7 +213,7 @@ class JunosExecutor:
             self.audit.event("junos_plan_failed", stage="apply", error=redact_text(str(exc)))
             if candidate_started:
                 try:
-                    cleanup = str(self.connection.send_command_timing("rollback 0", read_timeout=30))
+                    cleanup = self._config_command("rollback 0")
                     report.results.append(CommandResult("rollback 0", redact_text(cleanup), True))
                     self.audit.event("junos_candidate_discarded", name=plan.name)
                 except Exception as cleanup_error:

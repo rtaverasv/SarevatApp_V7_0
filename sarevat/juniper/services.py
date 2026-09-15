@@ -64,7 +64,7 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
         },
         warnings=(
             "Vista previa solamente: SarevatApp no enviara este candidato al equipo Junos.",
-            "En una futura prueba autorizada se usara configure private, commit check, "
+            "En una futura prueba autorizada se usara configure exclusive, commit check, "
             "commit confirmed y commit.",
             "No se incluye save ni una configuracion persistente fuera del commit controlado de Junos.",
         ),
@@ -75,7 +75,7 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
             "management_address": str(address),
             "management_interface": interface,
             "manual_workflow": (
-                "configure private",
+                "configure exclusive",
                 "load set terminal",
                 "show | compare",
                 "commit check",
