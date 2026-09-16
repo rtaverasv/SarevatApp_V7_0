@@ -74,6 +74,11 @@ from sarevat.vlsm import (
 VLSM_MASK_OPTIONS = tuple(f"/{prefix}" for prefix in range(33))
 
 
+def junos_lab_checkbox_acceptance(accepted: bool) -> str | None:
+    """Convierte la aceptacion explicita de la UI en el guardia del ejecutor."""
+    return JUNOS_LAB_ACCEPTANCE if accepted else None
+
+
 def widget_exists(widget: tk.Misc) -> bool:
     """Evita que un callback asíncrono actualice un control ya destruido."""
     try:
@@ -1427,6 +1432,64 @@ class SarevatGui(tk.Tk):
             if callable(disconnect):
                 disconnect()
 
+    def _confirm_junos_lab_apply(self, parent: tk.Misc) -> str | None:
+        """Solicita una confirmacion afirmativa sin obligar a transcribir una frase."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Aceptacion de laboratorio")
+        dialog.transient(parent)
+        dialog.resizable(False, False)
+        dialog.configure(background="#f6f8fb", padx=22, pady=18)
+        accepted = tk.BooleanVar(value=False)
+        response: dict[str, str | None] = {"value": None}
+
+        ttk.Label(
+            dialog,
+            text="Prueba Junos autorizada",
+            background="#f6f8fb",
+            foreground="#102a43",
+            font=("Segoe UI", 12, "bold"),
+        ).pack(anchor="w")
+        ttk.Label(
+            dialog,
+            text=(
+                "Se aplicara un commit confirmed de 5 minutos. Debes conservar una consola "
+                "fisica recuperable; SarevatApp verificara una segunda sesion SSH antes del commit final."
+            ),
+            background="#f6f8fb",
+            foreground="#526777",
+            wraplength=500,
+            justify="left",
+        ).pack(anchor="w", pady=(8, 12))
+        ttk.Checkbutton(
+            dialog,
+            text="Confirmo que es un laboratorio autorizado y tengo consola recuperable.",
+            variable=accepted,
+        ).pack(anchor="w")
+        actions = ttk.Frame(dialog, style="Card.TFrame")
+        actions.pack(fill="x", pady=(16, 0))
+        actions.columnconfigure((0, 1), weight=1)
+
+        def cancel() -> None:
+            dialog.destroy()
+
+        def apply() -> None:
+            response["value"] = junos_lab_checkbox_acceptance(accepted.get())
+            dialog.destroy()
+
+        apply_button = ttk.Button(actions, text="Aplicar prueba", style="Primary.TButton", command=apply)
+        apply_button.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        ttk.Button(actions, text="Cancelar", command=cancel).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+
+        def sync_apply_button(*_: object) -> None:
+            apply_button.state(["!disabled"] if accepted.get() else ["disabled"])
+
+        accepted.trace_add("write", sync_apply_button)
+        sync_apply_button()
+        dialog.protocol("WM_DELETE_WINDOW", cancel)
+        dialog.grab_set()
+        dialog.wait_window()
+        return response["value"]
+
     def _review_and_execute_plan(self, plan: CommandPlan) -> None:
         if not self.session:
             return
@@ -1543,20 +1606,9 @@ class SarevatGui(tk.Tk):
                 if not isinstance(session.executor, JunosExecutor):
                     status.set("No se encontro un ejecutor Junos para esta sesion.")
                     return
-                if not messagebox.askyesno(
-                    "Prueba Junos autorizada",
-                    "Se aplicara un commit confirmed de 5 minutos. Conserva consola fisica recuperable. "
-                    "SarevatApp verificara una segunda sesion SSH antes del commit final. Continuar?",
-                    parent=review,
-                ):
-                    return
-                phrase = simpledialog.askstring(
-                    "Aceptacion de laboratorio",
-                    f"Escribe {JUNOS_LAB_ACCEPTANCE} para autorizar esta prueba controlada:",
-                    parent=review,
-                )
-                if phrase != JUNOS_LAB_ACCEPTANCE:
-                    status.set("Aplicacion Junos cancelada: no se recibio la frase de autorizacion.")
+                acceptance = self._confirm_junos_lab_apply(review)
+                if acceptance is None:
+                    status.set("Aplicacion Junos cancelada: falta la aceptacion del laboratorio.")
                     return
                 apply_junos_button.state(["disabled"])
                 status.set("Aplicando commit confirmed y verificando una segunda sesion SSH...")
@@ -1582,7 +1634,7 @@ class SarevatGui(tk.Tk):
                     lambda: session.executor.execute(
                         plan,
                         dry_run=False,
-                        lab_acceptance=phrase,
+                        lab_acceptance=acceptance,
                         confirm=lambda _: True,
                         verify_management=lambda: self._verify_junos_management_session(session, plan),
                     ),

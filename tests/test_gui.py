@@ -13,6 +13,7 @@ from sarevat.gui import (
     export_vlsm_outputs,
     format_junos_prechecks,
     inventory_overview,
+    junos_lab_checkbox_acceptance,
     network_summary,
     profile_connection_target,
     widget_exists,
@@ -157,6 +158,11 @@ def test_gui_formats_junos_prechecks_without_configuration_output() -> None:
     assert "SOLO LECTURA" in text
     assert "aprobado" in text
     assert "show interfaces terse me0.0" in text
+
+
+def test_junos_lab_checkbox_requires_an_explicit_selection() -> None:
+    assert junos_lab_checkbox_acceptance(False) is None
+    assert junos_lab_checkbox_acceptance(True) == "JUNOS_LAB_APLICAR"
 
 
 def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:

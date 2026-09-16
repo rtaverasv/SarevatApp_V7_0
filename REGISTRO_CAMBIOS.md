@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 12:35:00 -04:00
+
+- Se reemplazo la transcripcion de la frase de autorizacion Junos por un cuadro modal con una casilla de aceptacion explicita y un boton de aplicacion que solo se habilita al marcarla.
+- Motivo: reducir friccion al ejecutar pruebas de laboratorio sin eliminar la declaracion consciente de autorizacion ni el requisito de consola recuperable.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 203 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 12:05:00 -04:00
 
 - Se agregó un drenaje controlado del canal SSH después de cada operación `commit` Junos antes de continuar con la verificación externa.
