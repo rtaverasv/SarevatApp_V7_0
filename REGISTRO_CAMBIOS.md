@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 15:00:00 -04:00
+
+- Se agrego el candidato Junos para un colector syslog remoto IPv4 con facility `any` y severidad `notice`, protegido por prechecks, commit confirmado y postcheck SSH independiente.
+- Motivo: ampliar el catalogo de servicios de infraestructura sin requerir topologia adicional ni reemplazar colectores existentes.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 208 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 14:30:00 -04:00
 
 - Se agrego el primer servicio del catalogo Junos: servidor NTP IPv4, con validacion, vista previa, prechecks y postcheck desde segunda sesion SSH dentro del flujo de commit confirmado.

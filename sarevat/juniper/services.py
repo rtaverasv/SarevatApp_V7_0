@@ -126,6 +126,45 @@ def build_ntp_candidate(
     )
 
 
+def build_syslog_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara un colector syslog remoto con nivel notice y verificacion externa."""
+    server = str(validate_ipv4(str(data.get("server", ""))))
+    address = str(validate_ipv4(management_address))
+    config_check = "show configuration system syslog | display set"
+    command = f"set system syslog host {server} any notice"
+    return CommandPlan(
+        name="Colector syslog Junos",
+        service="junos_syslog",
+        commands=(command,),
+        prechecks=(config_check,),
+        postchecks=(config_check,),
+        postcheck_expectations={config_check: (command,)},
+        warnings=(
+            "Este candidato agrega un colector syslog remoto; no elimina colectores existentes.",
+            "Se enviaran eventos de cualquier facility con severidad notice o superior.",
+            "Confirma que el colector es alcanzable desde la red de gestion.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH y configuracion syslog desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )
+
+
 def build_vlan_access_candidate(
     data: dict[str, Any], facts: DeviceFacts, management_address: str
 ) -> CommandPlan:

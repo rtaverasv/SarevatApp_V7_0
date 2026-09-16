@@ -7,6 +7,7 @@ from sarevat.juniper.services import (
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
     build_ntp_candidate,
+    build_syslog_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
 )
@@ -87,6 +88,21 @@ def test_junos_ntp_candidate_verifies_the_server_from_a_second_session() -> None
 def test_junos_ntp_candidate_rejects_an_invalid_server() -> None:
     with pytest.raises(ValidationError):
         build_ntp_candidate({"server": "no-es-ip"}, _facts(), "192.168.1.50")
+
+
+def test_junos_syslog_candidate_adds_notice_collector_and_verifies_it() -> None:
+    plan = build_syslog_candidate({"server": "192.0.2.200"}, _facts(), "192.168.1.50")
+
+    check = "show configuration system syslog | display set"
+    command = "set system syslog host 192.0.2.200 any notice"
+    assert plan.commands == (command,)
+    assert plan.prechecks == (check,)
+    assert plan.postcheck_expectations[check] == (command,)
+
+
+def test_junos_syslog_candidate_rejects_an_invalid_collector() -> None:
+    with pytest.raises(ValidationError):
+        build_syslog_candidate({"server": "collector.local"}, _facts(), "192.168.1.50")
 
 
 def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() -> None:
