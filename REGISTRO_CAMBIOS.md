@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 14:30:00 -04:00
+
+- Se agrego el primer servicio del catalogo Junos: servidor NTP IPv4, con validacion, vista previa, prechecks y postcheck desde segunda sesion SSH dentro del flujo de commit confirmado.
+- Motivo: iniciar la configuracion de protocolos de infraestructura sin depender de un segundo equipo ni modificar la topologia VLAN.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 206 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 14:00:00 -04:00
 
 - Se agrego una vista Junos de solo lectura que muestra cada VLAN descubierta y sus puertos access; el inventario conserva esa relacion desde `show vlans`.

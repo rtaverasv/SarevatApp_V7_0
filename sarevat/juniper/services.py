@@ -88,6 +88,44 @@ def build_management_candidate(data: dict[str, Any], facts: DeviceFacts) -> Comm
     )
 
 
+def build_ntp_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara un servidor NTP Junos con la transaccion recuperable estandar."""
+    server = str(validate_ipv4(str(data.get("server", ""))))
+    address = str(validate_ipv4(management_address))
+    config_check = "show configuration system ntp | display set"
+    return CommandPlan(
+        name="Servidor NTP Junos",
+        service="junos_ntp",
+        commands=(f"set system ntp server {server}",),
+        prechecks=(config_check, "show system uptime"),
+        postchecks=(config_check,),
+        postcheck_expectations={config_check: (f"set system ntp server {server}",)},
+        warnings=(
+            "Este candidato agrega un servidor NTP; no reemplaza otros servidores NTP existentes.",
+            "Confirma que el servidor NTP es alcanzable desde la red de gestion.",
+            "La aplicacion requiere prechecks, commit confirmed y verificacion SSH independiente.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH y configuracion NTP desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )
+
+
 def build_vlan_access_candidate(
     data: dict[str, Any], facts: DeviceFacts, management_address: str
 ) -> CommandPlan:

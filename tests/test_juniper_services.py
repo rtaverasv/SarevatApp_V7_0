@@ -6,6 +6,7 @@ from sarevat.juniper.services import (
     build_existing_vlan_access_candidate,
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
+    build_ntp_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
 )
@@ -70,6 +71,22 @@ def test_junos_management_candidate_rejects_an_interface_not_discovered() -> Non
             },
             _facts(),
         )
+
+
+def test_junos_ntp_candidate_verifies_the_server_from_a_second_session() -> None:
+    plan = build_ntp_candidate({"server": "192.0.2.123"}, _facts(), "192.168.1.50")
+
+    check = "show configuration system ntp | display set"
+    assert plan.commands == ("set system ntp server 192.0.2.123",)
+    assert plan.prechecks == (check, "show system uptime")
+    assert plan.postchecks == (check,)
+    assert plan.postcheck_expectations[check] == ("set system ntp server 192.0.2.123",)
+    assert plan.metadata["management_address"] == "192.168.1.50"
+
+
+def test_junos_ntp_candidate_rejects_an_invalid_server() -> None:
+    with pytest.raises(ValidationError):
+        build_ntp_candidate({"server": "no-es-ip"}, _facts(), "192.168.1.50")
 
 
 def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() -> None:
