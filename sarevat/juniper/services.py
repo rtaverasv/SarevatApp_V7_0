@@ -113,6 +113,7 @@ def build_vlan_access_candidate(
             "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
         )
     address = str(validate_ipv4(management_address))
+    port_config_check = f"show configuration interfaces {base_interface} | display set"
     return CommandPlan(
         name="VLAN y puerto access Junos",
         service="junos_vlan_access",
@@ -123,11 +124,12 @@ def build_vlan_access_candidate(
         ),
         interfaces=frozenset({interface}),
         prechecks=("show vlans", f"show interfaces terse {interface}"),
-        # EX2200 muestra la pertenencia y el tag de VLAN de forma estable en
-        # ``show vlans``; la salida resumida por interfaz varía entre releases.
-        postchecks=("show vlans",),
+        # EX2200 muestra el nombre/ID en ``show vlans``; la configuracion
+        # activa del puerto confirma de forma estable su miembro de VLAN.
+        postchecks=("show vlans", port_config_check),
         postcheck_expectations={
-            "show vlans": (vlan_name, str(vlan_id), f"{base_interface}.0"),
+            "show vlans": (vlan_name, str(vlan_id)),
+            port_config_check: (f"vlan members {vlan_name}",),
         },
         warnings=(
             "Este candidato crea una VLAN nueva y cambia el puerto seleccionado a modo access.",
@@ -170,6 +172,7 @@ def build_existing_vlan_access_candidate(
             "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
         )
     address = str(validate_ipv4(management_address))
+    port_config_check = f"show configuration interfaces {base_interface} | display set"
     return CommandPlan(
         name="Asignar VLAN existente a puerto access Junos",
         service="junos_existing_vlan_access",
@@ -179,9 +182,10 @@ def build_existing_vlan_access_candidate(
         ),
         interfaces=frozenset({interface}),
         prechecks=("show vlans", f"show interfaces terse {interface}"),
-        postchecks=("show vlans",),
+        postchecks=("show vlans", port_config_check),
         postcheck_expectations={
-            "show vlans": (vlan_name, str(vlan_id), f"{base_interface}.0"),
+            "show vlans": (vlan_name, str(vlan_id)),
+            port_config_check: (f"vlan members {vlan_name}",),
         },
         warnings=(
             "Este candidato no crea, borra ni renombra VLANs existentes.",

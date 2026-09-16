@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-15 10:31:00 -04:00
+
+- Se separaron los postchecks de VLAN/access: `show vlans` valida nombre e ID y `show configuration interfaces ... | display set` confirma la pertenencia del puerto.
+- Motivo: la segunda sesión SSH de una prueba real abrió correctamente, pero la salida de VLAN no presentó el puerto con el formato esperado; la aplicación descartó el candidato antes del commit final.
+- Archivos afectados: `sarevat/juniper/services.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 201 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados el 2026-09-16; el candidato de prueba fue descartado sin commit final.
+
 ### 2026-09-15 10:18:00 -04:00
 
 - Se añadió el candidato separado para asociar una VLAN ya descubierta a un puerto access, sin recrear, borrar ni renombrar VLANs.

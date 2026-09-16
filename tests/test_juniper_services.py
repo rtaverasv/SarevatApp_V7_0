@@ -84,8 +84,10 @@ def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() 
         "set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members USERS",
     )
     assert plan.metadata["management_address"] == "192.0.2.10"
-    assert plan.postchecks == ("show vlans",)
-    assert plan.postcheck_expectations["show vlans"] == ("USERS", "20", "ge-0/0/0.0")
+    port_check = "show configuration interfaces ge-0/0/0 | display set"
+    assert plan.postchecks == ("show vlans", port_check)
+    assert plan.postcheck_expectations["show vlans"] == ("USERS", "20")
+    assert plan.postcheck_expectations[port_check] == ("vlan members USERS",)
 
 
 def test_junos_vlan_access_candidate_rejects_existing_vlan_and_management_port() -> None:
