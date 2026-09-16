@@ -79,6 +79,15 @@ def junos_lab_checkbox_acceptance(accepted: bool) -> str | None:
     return JUNOS_LAB_ACCEPTANCE if accepted else None
 
 
+def junos_physical_port_options(facts: DeviceFacts) -> tuple[str, ...]:
+    """Expone puertos Ethernet fisicos aunque Junos solo informe su unidad 0."""
+    return tuple(
+        name
+        for name in facts.interfaces
+        if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+(?:\.0)?", name, re.I)
+    )
+
+
 def widget_exists(widget: tk.Misc) -> bool:
     """Evita que un callback asíncrono actualice un control ya destruido."""
     try:
@@ -1174,11 +1183,7 @@ class SarevatGui(tk.Tk):
         form.pack(fill="x")
         vlan_name = tk.StringVar()
         vlan_id = tk.StringVar()
-        ports = tuple(
-            name
-            for name in session.facts.interfaces
-            if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", name, re.I)
-        )
+        ports = junos_physical_port_options(session.facts)
         interface = tk.StringVar(value=ports[0] if ports else "")
         for label, value in (("Nombre de VLAN", vlan_name), ("ID de VLAN (2-4094)", vlan_id)):
             ttk.Label(form, text=label, background="#ffffff", foreground="#526777").pack(anchor="w")
@@ -1243,11 +1248,7 @@ class SarevatGui(tk.Tk):
                 foreground="#9c2f19",
             ).pack(anchor="w")
             return
-        ports = tuple(
-            name
-            for name in session.facts.interfaces
-            if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", name, re.I)
-        )
+        ports = junos_physical_port_options(session.facts)
         selected_vlan = tk.StringVar(value=next(iter(vlan_options)))
         interface = tk.StringVar(value=ports[0] if ports else "")
         ttk.Label(form, text="VLAN existente", background="#ffffff", foreground="#526777").pack(anchor="w")
@@ -1310,11 +1311,7 @@ class SarevatGui(tk.Tk):
                 foreground="#9c2f19",
             ).pack(anchor="w")
             return
-        ports = tuple(
-            name
-            for name in session.facts.interfaces
-            if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", name, re.I)
-        )
+        ports = junos_physical_port_options(session.facts)
         selected_vlan = tk.StringVar(value=next(iter(vlan_options)))
         interface = tk.StringVar(value=ports[0] if ports else "")
         ttk.Label(form, text="VLAN existente", background="#ffffff", foreground="#526777").pack(anchor="w")

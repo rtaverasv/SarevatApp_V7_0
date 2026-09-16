@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 13:00:00 -04:00
+
+- Se corrigio el selector de puertos VLAN Junos para incluir interfaces fisicas reportadas solamente como unidad `.0` por el inventario del EX2200.
+- Motivo: la VLAN existente se descubria correctamente, pero el selector quedaba vacio cuando el equipo devolvia `ge-.../0.0` en lugar del nombre fisico base.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 204 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 12:35:00 -04:00
 
 - Se reemplazo la transcripcion de la frase de autorizacion Junos por un cuadro modal con una casilla de aceptacion explicita y un boton de aplicacion que solo se habilita al marcarla.
