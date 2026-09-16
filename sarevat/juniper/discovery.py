@@ -69,6 +69,25 @@ def parse_vlan_interfaces(output: str) -> tuple[str, ...]:
     return tuple(found)
 
 
+def parse_vlan_members(output: str) -> dict[int, tuple[str, ...]]:
+    """Asocia las unidades access de ``show vlans`` con el ID de su VLAN."""
+    members: dict[int, list[str]] = {}
+    current_vlan: int | None = None
+    port_re = re.compile(r"\b(?:ge|xe|et)-\d+/\d+/\d+\.0\b", re.IGNORECASE)
+    for line in output.splitlines():
+        vlan = re.match(r"^\s*\S+\s+(\d+)\b", line)
+        if vlan:
+            current_vlan = int(vlan.group(1))
+            members.setdefault(current_vlan, [])
+        if current_vlan is None:
+            continue
+        for match in port_re.finditer(line):
+            port = match.group(0)
+            if port not in members[current_vlan]:
+                members[current_vlan].append(port)
+    return {vlan_id: tuple(ports) for vlan_id, ports in members.items()}
+
+
 def _parse_version(output: str) -> tuple[str, str, str, str]:
     hostname = re.search(r"(?im)^Hostname:\s*(\S+)", output)
     model = re.search(r"(?im)^Model:\s*(\S+)", output)
@@ -93,6 +112,7 @@ def discover_device(connection: ConnectionLike) -> DeviceFacts:
     hostname, model, version, serial = _parse_version(version_output)
     interfaces = parse_interfaces_terse(interfaces_output)
     vlans = parse_vlans(vlans_output)
+    vlan_members = parse_vlan_members(vlans_output)
     # En algunas salidas EX2200, ``show interfaces terse`` omite puertos sin
     # direccion L3, pero ``show vlans`` aun los enumera como unidades access.
     for name in parse_vlan_interfaces(vlans_output):
@@ -108,6 +128,7 @@ def discover_device(connection: ConnectionLike) -> DeviceFacts:
         serial=serial,
         interfaces=interfaces,
         vlans=vlans,
+        vlan_members=vlan_members,
         capabilities=capabilities,
         warnings=warnings,
     )

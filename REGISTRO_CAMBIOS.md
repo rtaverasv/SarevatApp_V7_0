@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 14:00:00 -04:00
+
+- Se agrego una vista Junos de solo lectura que muestra cada VLAN descubierta y sus puertos access; el inventario conserva esa relacion desde `show vlans`.
+- Motivo: permitir comprobar la pertenencia antes de reasignar puertos, sin requerir otro equipo para probar trunk ni enviar configuracion.
+- Archivos afectados: `sarevat/models.py`, `sarevat/juniper/discovery.py`, `sarevat/gui.py`, `tests/test_juniper_discovery.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 204 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 13:35:00 -04:00
 
 - Se unificaron las opciones duplicadas de puertos Junos y se agrego a cada selector el estado administrativo y de enlace disponible.

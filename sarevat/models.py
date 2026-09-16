@@ -65,6 +65,7 @@ class DeviceFacts:
     serial: str = "desconocido"
     interfaces: dict[str, InterfaceState] = field(default_factory=dict)
     vlans: dict[int, str] = field(default_factory=dict)
+    vlan_members: dict[int, tuple[str, ...]] = field(default_factory=dict)
     trunks: set[str] = field(default_factory=set)
     etherchannels: set[str] = field(default_factory=set)
     capabilities: set[str] = field(default_factory=set)

@@ -857,6 +857,11 @@ class SarevatGui(tk.Tk):
                 ).pack(anchor="w", pady=(8, 0))
                 ttk.Button(
                     card,
+                    text="Ver VLANs y puertos descubiertos",
+                    command=self._junos_vlan_inventory_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
                     text="Preparar VLAN y puerto access (vista previa)",
                     command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
@@ -1240,6 +1245,42 @@ class SarevatGui(tk.Tk):
         ttk.Button(form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare).pack(
             fill="x", pady=(8, 0)
         )
+
+    def _junos_vlan_inventory_page(self) -> None:
+        """Muestra la pertenencia VLAN descubierta sin preparar comandos."""
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        facts = self.session.facts
+        self._clear()
+        self._page_header(
+            "VLANs y puertos descubiertos",
+            "Consulta de solo lectura basada en el ultimo inventario SSH.",
+        )
+        card = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
+        card.pack(fill="both", expand=True)
+        if not facts.vlans:
+            ttk.Label(
+                card,
+                text="No hay VLANs descubiertas. Actualiza el inventario para consultar el equipo.",
+                background="#ffffff",
+                foreground="#9c2f19",
+            ).pack(anchor="w")
+            return
+        tree = ttk.Treeview(card, columns=("id", "name", "ports"), show="headings")
+        for name, label, width in (
+            ("id", "ID", 80),
+            ("name", "VLAN", 180),
+            ("ports", "Puertos access descubiertos", 520),
+        ):
+            tree.heading(name, text=label)
+            tree.column(name, anchor="w", width=width, stretch=name == "ports")
+        for vlan_id, name in sorted(facts.vlans.items()):
+            ports = ", ".join(facts.vlan_members.get(vlan_id, ())) or "Sin puertos reportados"
+            tree.insert("", "end", values=(vlan_id, name, ports))
+        tree.pack(fill="both", expand=True)
+        ttk.Button(
+            card, text="Actualizar inventario", command=self._refresh_session_facts
+        ).pack(anchor="w", pady=(14, 0))
 
     def _junos_existing_vlan_access_page(self) -> None:
         if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
