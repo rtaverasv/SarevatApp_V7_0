@@ -209,3 +209,59 @@ def build_existing_vlan_access_candidate(
             ),
         },
     )
+
+
+def build_existing_vlan_trunk_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Añade una VLAN descubierta a un puerto trunk Junos con confirmación recuperable."""
+    vlan_name = str(data.get("vlan_name", "")).strip()
+    matching_ids = [
+        vlan_id for vlan_id, name in facts.vlans.items() if name.casefold() == vlan_name.casefold()
+    ]
+    if len(matching_ids) != 1:
+        raise ValidationError("Selecciona una VLAN existente del inventario actual.")
+    vlan_id = matching_ids[0]
+    interface, base_interface, unit = _junos_interface(str(data.get("interface", "")), facts)
+    if unit != "0" or not re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+", base_interface, re.I):
+        raise ValidationError(
+            "Selecciona un puerto fisico Junos, por ejemplo ge-0/0/5, no una interfaz de gestion."
+        )
+    address = str(validate_ipv4(management_address))
+    port_config_check = f"show configuration interfaces {base_interface} | display set"
+    return CommandPlan(
+        name="Agregar VLAN existente a puerto trunk Junos",
+        service="junos_existing_vlan_trunk",
+        commands=(
+            f"set interfaces {base_interface} unit 0 family ethernet-switching port-mode trunk",
+            f"set interfaces {base_interface} unit 0 family ethernet-switching vlan members {vlan_name}",
+        ),
+        interfaces=frozenset({interface}),
+        prechecks=("show vlans", f"show interfaces terse {interface}", port_config_check),
+        postchecks=("show vlans", port_config_check),
+        postcheck_expectations={
+            "show vlans": (vlan_name, str(vlan_id)),
+            port_config_check: ("port-mode trunk", f"vlan members {vlan_name}"),
+        },
+        warnings=(
+            "Este candidato agrega una VLAN permitida y establece el puerto en modo trunk.",
+            "No lo uses para un equipo final; confirma que el cable conectado es un enlace entre equipos.",
+            "Los miembros de VLAN existentes se conservan; revisa la vista previa antes de aplicar.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH e inventario desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )

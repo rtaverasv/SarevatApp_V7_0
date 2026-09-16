@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 09:05:00 -04:00
+
+- Se añadió el candidato Junos para agregar una VLAN existente a un puerto trunk, conservando la pertenencia VLAN declarada y verificando la configuración activa desde una segunda sesión SSH.
+- Motivo: completar el bloque inicial de switching con un flujo específico para enlaces entre equipos, separado del acceso de terminales.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 202 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envió configuración al equipo.
+
 ### 2026-09-15 10:31:00 -04:00
 
 - Se separaron los postchecks de VLAN/access: `show vlans` valida nombre e ID y `show configuration interfaces ... | display set` confirma la pertenencia del puerto.

@@ -4,6 +4,7 @@ import pytest
 
 from sarevat.juniper.services import (
     build_existing_vlan_access_candidate,
+    build_existing_vlan_trunk_candidate,
     build_management_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -122,3 +123,18 @@ def test_junos_existing_vlan_access_candidate_rejects_unknown_vlan() -> None:
         build_existing_vlan_access_candidate(
             {"vlan_name": "USERS", "interface": "ge-0/0/0"}, _facts(), "192.0.2.10"
         )
+
+
+def test_junos_existing_vlan_trunk_candidate_adds_member_without_creating_vlan() -> None:
+    facts = _facts()
+    facts.vlans[20] = "USERS"
+    plan = build_existing_vlan_trunk_candidate(
+        {"vlan_name": "USERS", "interface": "ge-0/0/0"}, facts, "192.0.2.10"
+    )
+
+    assert plan.commands == (
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching port-mode trunk",
+        "set interfaces ge-0/0/0 unit 0 family ethernet-switching vlan members USERS",
+    )
+    assert "set vlans" not in "\n".join(plan.commands)
+    assert "show configuration interfaces ge-0/0/0 | display set" in plan.postchecks
