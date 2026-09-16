@@ -105,8 +105,10 @@ class JunosExecutor:
         if expected_tokens and not all(token.casefold() in normalized for token in expected_tokens):
             raise RuntimeError(f"Postcheck semantico no confirmado para: {command}")
 
-    def _timing(self, command: str) -> str:
-        output = str(self.connection.send_command_timing(command, read_timeout=45))
+    def _timing(self, command: str, *, last_read: float = 2.0) -> str:
+        output = str(
+            self.connection.send_command_timing(command, read_timeout=45, last_read=last_read)
+        )
         self._check_output(output)
         return output
 
@@ -119,7 +121,13 @@ class JunosExecutor:
         deliberadamente agnostico al prompt y la comprobacion real se hace en
         una segunda sesion SSH antes del commit final.
         """
-        return self._timing(command)
+        output = self._timing(command)
+        if command.startswith("commit"):
+            # Algunos EX2200 entregan la salida de commit despues de que el
+            # primer ciclo de lectura termina. Drenar el canal evita abrir la
+            # segunda sesion antes de que el commit confirmed sea efectivo.
+            output += self._timing("", last_read=3.0)
+        return output
 
     def _apply_candidate(self, plan: CommandPlan, report: ExecutionReport, confirm_minutes: int) -> None:
         transcript = self._timing("configure exclusive")

@@ -88,7 +88,7 @@ def test_junos_executor_commits_only_after_second_session_verification(tmp_path:
     assert connection.timing_commands[:2] == ["configure exclusive", "load set terminal"]
     assert "commit check" in connection.timing_commands
     assert "commit confirmed 5" in connection.timing_commands
-    assert connection.timing_commands[-1] == "commit"
+    assert connection.timing_commands[-2:] == ["commit", ""]
     assert connection.commands == ["show configuration system host-name", "show interfaces terse me0.0"]
 
 

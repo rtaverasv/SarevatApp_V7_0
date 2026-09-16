@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 12:05:00 -04:00
+
+- Se agregó un drenaje controlado del canal SSH después de cada operación `commit` Junos antes de continuar con la verificación externa.
+- Motivo: la auditoría de pruebas reales mostró que algunos EX2200 entregan la salida de `commit check` y `commit confirmed` en el ciclo siguiente; la segunda sesión se abría antes de que el cambio confirmado estuviera visible.
+- Archivos afectados: `sarevat/juniper/transaction.py`, `tests/test_juniper_executor.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 202 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envió configuración adicional al equipo.
+
 ### 2026-09-16 09:05:00 -04:00
 
 - Se añadió el candidato Junos para agregar una VLAN existente a un puerto trunk, conservando la pertenencia VLAN declarada y verificando la configuración activa desde una segunda sesión SSH.
