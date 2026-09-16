@@ -61,6 +61,14 @@ def parse_vlans(output: str) -> dict[int, str]:
     return vlans
 
 
+def parse_vlan_interfaces(output: str) -> tuple[str, ...]:
+    """Extrae unidades Ethernet de ``show vlans``, incluso en lineas partidas."""
+    found: dict[str, None] = {}
+    for match in re.finditer(r"\b(?:ge|xe|et)-\d+/\d+/\d+\.0\b", output, re.IGNORECASE):
+        found.setdefault(match.group(0), None)
+    return tuple(found)
+
+
 def _parse_version(output: str) -> tuple[str, str, str, str]:
     hostname = re.search(r"(?im)^Hostname:\s*(\S+)", output)
     model = re.search(r"(?im)^Model:\s*(\S+)", output)
@@ -85,6 +93,10 @@ def discover_device(connection: ConnectionLike) -> DeviceFacts:
     hostname, model, version, serial = _parse_version(version_output)
     interfaces = parse_interfaces_terse(interfaces_output)
     vlans = parse_vlans(vlans_output)
+    # En algunas salidas EX2200, ``show interfaces terse`` omite puertos sin
+    # direccion L3, pero ``show vlans`` aun los enumera como unidades access.
+    for name in parse_vlan_interfaces(vlans_output):
+        interfaces.setdefault(name, InterfaceState(name=name))
     capabilities = {"ssh", "ipv4", "junos", "read_only_inventory"}
     if "ex" in model.casefold() or vlans:
         capabilities.update({"switching", "vlan"})
