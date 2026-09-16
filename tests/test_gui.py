@@ -14,7 +14,7 @@ from sarevat.gui import (
     format_junos_prechecks,
     inventory_overview,
     junos_lab_checkbox_acceptance,
-    junos_physical_port_options,
+    junos_physical_port_choices,
     network_summary,
     profile_connection_target,
     widget_exists,
@@ -166,9 +166,10 @@ def test_junos_lab_checkbox_requires_an_explicit_selection() -> None:
     assert junos_lab_checkbox_acceptance(True) == "JUNOS_LAB_APLICAR"
 
 
-def test_junos_physical_port_options_accepts_unit_zero_inventory() -> None:
+def test_junos_physical_port_choices_deduplicate_and_describe_ports() -> None:
     facts = DeviceFacts(
         interfaces={
+            "ge-0/0/0": InterfaceState("ge-0/0/0", status="up", protocol="down"),
             "ge-0/0/0.0": InterfaceState("ge-0/0/0.0"),
             "ge-0/0/1.1": InterfaceState("ge-0/0/1.1"),
             "xe-0/1/0": InterfaceState("xe-0/1/0"),
@@ -176,7 +177,10 @@ def test_junos_physical_port_options_accepts_unit_zero_inventory() -> None:
         }
     )
 
-    assert junos_physical_port_options(facts) == ("ge-0/0/0.0", "xe-0/1/0")
+    assert junos_physical_port_choices(facts) == (
+        ("ge-0/0/0 — admin up; enlace down", "ge-0/0/0"),
+        ("xe-0/1/0 — estado no disponible", "xe-0/1/0"),
+    )
 
 
 def test_gui_exports_vlsm_results_as_local_json_and_csv(tmp_path) -> None:

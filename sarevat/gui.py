@@ -79,13 +79,26 @@ def junos_lab_checkbox_acceptance(accepted: bool) -> str | None:
     return JUNOS_LAB_ACCEPTANCE if accepted else None
 
 
-def junos_physical_port_options(facts: DeviceFacts) -> tuple[str, ...]:
-    """Expone puertos Ethernet fisicos aunque Junos solo informe su unidad 0."""
-    return tuple(
-        name
-        for name in facts.interfaces
-        if re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+(?:\.0)?", name, re.I)
-    )
+def junos_physical_port_choices(facts: DeviceFacts) -> tuple[tuple[str, str], ...]:
+    """Devuelve etiquetas legibles y referencias validas para puertos fisicos."""
+    ports: dict[str, str] = {}
+    for name in facts.interfaces:
+        if not re.fullmatch(r"(?:ge|xe|et)-\d+/\d+/\d+(?:\.0)?", name, re.I):
+            continue
+        base = name.removesuffix(".0")
+        # Se prefiere el puerto base si el inventario incluye ambas formas.
+        if base not in ports or name == base:
+            ports[base] = name
+
+    choices: list[tuple[str, str]] = []
+    for base, inventory_name in ports.items():
+        state = facts.interfaces.get(base) or facts.interfaces[inventory_name]
+        if state.status == "unknown" and state.protocol == "unknown":
+            detail = "estado no disponible"
+        else:
+            detail = f"admin {state.status}; enlace {state.protocol}"
+        choices.append((f"{base} — {detail}", inventory_name))
+    return tuple(choices)
 
 
 def widget_exists(widget: tk.Misc) -> bool:
@@ -1183,15 +1196,15 @@ class SarevatGui(tk.Tk):
         form.pack(fill="x")
         vlan_name = tk.StringVar()
         vlan_id = tk.StringVar()
-        ports = junos_physical_port_options(session.facts)
-        interface = tk.StringVar(value=ports[0] if ports else "")
+        ports = dict(junos_physical_port_choices(session.facts))
+        interface = tk.StringVar(value=next(iter(ports), ""))
         for label, value in (("Nombre de VLAN", vlan_name), ("ID de VLAN (2-4094)", vlan_id)):
             ttk.Label(form, text=label, background="#ffffff", foreground="#526777").pack(anchor="w")
             ttk.Entry(form, textvariable=value).pack(fill="x", pady=(2, 8))
         ttk.Label(form, text="Puerto fisico access", background="#ffffff", foreground="#526777").pack(
             anchor="w"
         )
-        ttk.Combobox(form, textvariable=interface, values=ports, state="readonly").pack(
+        ttk.Combobox(form, textvariable=interface, values=tuple(ports), state="readonly").pack(
             fill="x", pady=(2, 8)
         )
         ttk.Label(
@@ -1215,7 +1228,7 @@ class SarevatGui(tk.Tk):
                         {
                             "vlan_name": vlan_name.get(),
                             "vlan_id": vlan_id.get(),
-                            "interface": interface.get(),
+                            "interface": ports.get(interface.get(), ""),
                         },
                         session.facts,
                         management_address,
@@ -1248,9 +1261,9 @@ class SarevatGui(tk.Tk):
                 foreground="#9c2f19",
             ).pack(anchor="w")
             return
-        ports = junos_physical_port_options(session.facts)
+        ports = dict(junos_physical_port_choices(session.facts))
         selected_vlan = tk.StringVar(value=next(iter(vlan_options)))
-        interface = tk.StringVar(value=ports[0] if ports else "")
+        interface = tk.StringVar(value=next(iter(ports), ""))
         ttk.Label(form, text="VLAN existente", background="#ffffff", foreground="#526777").pack(anchor="w")
         ttk.Combobox(
             form, textvariable=selected_vlan, values=tuple(vlan_options), state="readonly"
@@ -1258,7 +1271,7 @@ class SarevatGui(tk.Tk):
         ttk.Label(form, text="Puerto fisico access", background="#ffffff", foreground="#526777").pack(
             anchor="w"
         )
-        ttk.Combobox(form, textvariable=interface, values=ports, state="readonly").pack(
+        ttk.Combobox(form, textvariable=interface, values=tuple(ports), state="readonly").pack(
             fill="x", pady=(2, 8)
         )
         ttk.Label(
@@ -1278,7 +1291,7 @@ class SarevatGui(tk.Tk):
                     build_existing_vlan_access_candidate(
                         {
                             "vlan_name": vlan_options[selected_vlan.get()],
-                            "interface": interface.get(),
+                            "interface": ports.get(interface.get(), ""),
                         },
                         session.facts,
                         management_address,
@@ -1311,9 +1324,9 @@ class SarevatGui(tk.Tk):
                 foreground="#9c2f19",
             ).pack(anchor="w")
             return
-        ports = junos_physical_port_options(session.facts)
+        ports = dict(junos_physical_port_choices(session.facts))
         selected_vlan = tk.StringVar(value=next(iter(vlan_options)))
-        interface = tk.StringVar(value=ports[0] if ports else "")
+        interface = tk.StringVar(value=next(iter(ports), ""))
         ttk.Label(form, text="VLAN existente", background="#ffffff", foreground="#526777").pack(anchor="w")
         ttk.Combobox(
             form, textvariable=selected_vlan, values=tuple(vlan_options), state="readonly"
@@ -1321,7 +1334,7 @@ class SarevatGui(tk.Tk):
         ttk.Label(form, text="Puerto fisico trunk", background="#ffffff", foreground="#526777").pack(
             anchor="w"
         )
-        ttk.Combobox(form, textvariable=interface, values=ports, state="readonly").pack(
+        ttk.Combobox(form, textvariable=interface, values=tuple(ports), state="readonly").pack(
             fill="x", pady=(2, 8)
         )
         ttk.Label(
@@ -1344,7 +1357,7 @@ class SarevatGui(tk.Tk):
                     build_existing_vlan_trunk_candidate(
                         {
                             "vlan_name": vlan_options[selected_vlan.get()],
-                            "interface": interface.get(),
+                            "interface": ports.get(interface.get(), ""),
                         },
                         session.facts,
                         management_address,

@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 13:35:00 -04:00
+
+- Se unificaron las opciones duplicadas de puertos Junos y se agrego a cada selector el estado administrativo y de enlace disponible.
+- Motivo: evitar ambiguedad entre `ge-...` y `ge-....0`, facilitando elegir un puerto libre antes de un cambio VLAN.
+- Archivos afectados: `sarevat/gui.py`, `tests/test_gui.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 204 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 13:20:00 -04:00
 
 - Se enriquecio el inventario Junos con las unidades Ethernet `.0` que `show vlans` enumera, aun cuando `show interfaces terse` no las informe.
