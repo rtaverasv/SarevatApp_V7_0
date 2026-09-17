@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 18:00:00 -04:00
+
+- Se extrajo la pantalla del candidato de gestion Junos a `gui_junos_management.py`, que ahora se integra como mixin de la ventana principal.
+- Motivo: continuar la separacion por dominios de la GUI sin alterar la construccion, revision ni ejecucion de planes.
+- Archivos afectados: `sarevat/gui.py`, `sarevat/gui_junos_management.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 217 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-16 17:35:00 -04:00
 
 - Se separaron los formularios Junos de NTP, syslog, DNS, SNMPv3 y endurecimiento SSH desde la ventana principal hacia el modulo `gui_junos_services`; tambien se documento la arquitectura en el roadmap.

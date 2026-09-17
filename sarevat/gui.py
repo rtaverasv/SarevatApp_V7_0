@@ -35,14 +35,13 @@ from sarevat.cisco.services import (
 )
 from sarevat.compliance import ComplianceStatus, audit_running_config, export_compliance_json
 from sarevat.drafts import DraftStore
+from sarevat.gui_junos_management import JunosManagementPageMixin
 from sarevat.gui_junos_services import JunosServicePagesMixin
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.juniper.services import (
     build_existing_vlan_access_candidate,
     build_existing_vlan_trunk_candidate,
-    build_management_candidate,
     build_vlan_access_candidate,
-    preferred_management_interface,
 )
 from sarevat.juniper.transaction import (
     JUNOS_LAB_ACCEPTANCE,
@@ -308,7 +307,7 @@ class DeviceSession:
     reconnect_params: dict[str, Any] | None = None
 
 
-class SarevatGui(JunosServicePagesMixin, tk.Tk):
+class SarevatGui(JunosManagementPageMixin, JunosServicePagesMixin, tk.Tk):
     """Ventana alpha: operaciones de lectura y planificacion con navegacion segura."""
 
     def __init__(self) -> None:
@@ -1162,73 +1161,6 @@ class SarevatGui(JunosServicePagesMixin, tk.Tk):
             self._review_and_execute_plan(build_basic_hardening_plan(self.session.facts))
         except ValidationError as exc:
             messagebox.showinfo("Endurecimiento", str(exc), parent=self)
-
-    def _junos_management_candidate_page(self) -> None:
-        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
-            return
-        session = self.session
-        self._clear()
-        self._page_header(
-            "Candidato de gestión Junos",
-            "Se valida y muestra un candidato. La aplicación remota aún permanece bloqueada.",
-        )
-        form = ttk.Frame(self.content, style="Card.TFrame", padding=(22, 20))
-        form.pack(fill="x")
-        initial_hostname = session.facts.hostname if session.facts.hostname != "desconocido" else ""
-        hostname = tk.StringVar(value=initial_hostname)
-        interface = tk.StringVar(value=preferred_management_interface(session.facts))
-        address = tk.StringVar()
-        netmask = tk.StringVar(value="255.255.255.0")
-        fields = (
-            ("Hostname", hostname),
-            ("Interfaz descubierta", interface),
-            ("IPv4 de gestión", address),
-            ("Máscara IPv4", netmask),
-        )
-        for label, value in fields:
-            ttk.Label(
-                form, text=label, background="#ffffff", foreground="#526777", font=("Segoe UI", 10)
-            ).pack(anchor="w")
-            if value is interface:
-                ttk.Combobox(
-                    form,
-                    textvariable=value,
-                    values=tuple(session.facts.interfaces),
-                    state="readonly",
-                ).pack(fill="x", pady=(2, 8))
-            else:
-                ttk.Entry(form, textvariable=value).pack(fill="x", pady=(2, 8))
-
-        ttk.Label(
-            form,
-            text=(
-                "El candidato no será enviado ni guardado. La futura ejecución requerirá una "
-                "prueba autorizada con commit confirmed."
-            ),
-            background="#ffffff",
-            foreground="#526777",
-            wraplength=680,
-        ).pack(anchor="w", pady=(4, 8))
-
-        def prepare() -> None:
-            try:
-                self._review_and_execute_plan(
-                    build_management_candidate(
-                        {
-                            "hostname": hostname.get(),
-                            "interface": interface.get(),
-                            "address": address.get(),
-                            "netmask": netmask.get(),
-                        },
-                        session.facts,
-                    )
-                )
-            except ValidationError as exc:
-                messagebox.showwarning("Datos por corregir", str(exc), parent=self)
-
-        ttk.Button(
-            form, text="Validar y preparar candidato", style="Primary.TButton", command=prepare
-        ).pack(fill="x", pady=(8, 0))
 
     def _junos_vlan_access_candidate_page(self) -> None:
         if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
