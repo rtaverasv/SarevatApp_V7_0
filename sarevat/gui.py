@@ -42,6 +42,7 @@ from sarevat.juniper.services import (
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
     build_ntp_candidate,
+    build_snmpv3_candidate,
     build_syslog_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -880,6 +881,11 @@ class SarevatGui(tk.Tk):
                 ).pack(anchor="w", pady=(8, 0))
                 ttk.Button(
                     card,
+                    text="Preparar SNMPv3 seguro (vista previa)",
+                    command=self._junos_snmpv3_candidate_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
                     text="Preparar VLAN y puerto access (vista previa)",
                     command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
@@ -1248,6 +1254,27 @@ class SarevatGui(tk.Tk):
             notice=(
                 "Los servidores se agregan sin eliminar los existentes. "
                 "Verifica que sean alcanzables desde la red de gestion."
+            ),
+        )
+
+    def _junos_snmpv3_candidate_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        management_address = str(session.reconnect_params.get("host", "")) if session.reconnect_params else ""
+        self._simple_plan_form(
+            "SNMPv3 Junos seguro",
+            (
+                ("Grupo SNMPv3", "group"),
+                ("Usuario SNMPv3", "username"),
+                ("Clave de autenticacion", "auth_password"),
+                ("Clave de privacidad", "privacy_password"),
+            ),
+            lambda data: build_snmpv3_candidate(data, session.facts, management_address),
+            hidden={"auth_password", "privacy_password"},
+            notice=(
+                "Requiere engine ID SNMP ya configurado; se validara antes de aplicar. "
+                "Las claves solo existen durante esta sesion y se redactan en toda evidencia local."
             ),
         )
 

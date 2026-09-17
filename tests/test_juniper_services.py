@@ -8,6 +8,7 @@ from sarevat.juniper.services import (
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
     build_ntp_candidate,
+    build_snmpv3_candidate,
     build_syslog_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -125,6 +126,36 @@ def test_junos_dns_candidate_rejects_duplicate_or_invalid_servers() -> None:
         )
     with pytest.raises(ValidationError):
         build_dns_candidate({"primary": "dns.local"}, _facts(), "192.168.1.50")
+
+
+def test_junos_snmpv3_candidate_is_authpriv_and_requires_an_engine_id() -> None:
+    plan = build_snmpv3_candidate(
+        {
+            "group": "MONITOR",
+            "username": "netops",
+            "auth_password": "AuthSecret8",
+            "privacy_password": "PrivSecret8",
+        },
+        _facts(),
+        "192.168.1.50",
+    )
+
+    engine_check = "show configuration snmp engine-id | display set"
+    assert "set snmp view sarevat-ro oid .1 include" in plan.commands
+    assert "security-level privacy read-view sarevat-ro" in "\n".join(plan.commands)
+    assert plan.metadata["precheck_expectations"] == {engine_check: ("set snmp engine-id",)}
+    assert "AuthSecret8" in "\n".join(plan.commands)
+
+
+def test_junos_snmpv3_candidate_rejects_short_or_unsafe_secrets() -> None:
+    data = {
+        "group": "MONITOR",
+        "username": "netops",
+        "auth_password": "short",
+        "privacy_password": "PrivSecret8",
+    }
+    with pytest.raises(ValidationError, match="entre 8"):
+        build_snmpv3_candidate(data, _facts(), "192.168.1.50")
 
 
 def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() -> None:

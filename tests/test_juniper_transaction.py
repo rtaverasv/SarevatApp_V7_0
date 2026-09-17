@@ -60,3 +60,22 @@ def test_junos_prechecks_reject_non_junos_or_enabled_plan() -> None:
             object(),
             CommandPlan("Cisco", "test", ("show clock",), metadata={"platform": "cisco_ios"}),
         )
+
+
+def test_junos_prechecks_enforce_declared_semantic_expectations() -> None:
+    plan = CommandPlan(
+        "SNMP", "junos_snmpv3", ("set snmp example",), prechecks=("show snmp",), metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "precheck_expectations": {"show snmp": ("engine-id",)},
+        }
+    )
+
+    class Connection:
+        def send_command(self, _: str, **__: Any) -> str:
+            return "SNMP configured without the required value"
+
+    report = run_prechecks(Connection(), plan)
+
+    assert not report.ok
+    assert report.errors == ("show snmp: precheck semantico no confirmado",)

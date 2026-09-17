@@ -7,13 +7,20 @@ import re
 from typing import Any
 
 from sarevat.models import CommandPlan, DeviceFacts
-from sarevat.validators import ValidationError, validate_hostname, validate_ipv4, validate_netmask
+from sarevat.validators import (
+    ValidationError,
+    validate_cisco_text,
+    validate_hostname,
+    validate_ipv4,
+    validate_netmask,
+)
 
 _INTERFACE_RE = re.compile(
     r"^(?P<base>(?:(?:ge|xe|et)-\d+/\d+/\d+)|(?:vlan|irb|lo0|me0))(?:\.(?P<unit>\d+))?$",
     re.IGNORECASE,
 )
 _VLAN_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,62}$")
+_SNMP_SECRET_RE = re.compile(r"^[A-Za-z0-9!@#$%^&*()_+=.,:/?-]{8,64}$")
 
 
 def preferred_management_interface(facts: DeviceFacts) -> str:
@@ -202,6 +209,69 @@ def build_dns_candidate(
                 "commit check",
                 "commit confirmed 5",
                 "verificar SSH y configuracion DNS desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )
+
+
+def _snmpv3_secret(value: str, field: str) -> str:
+    secret = validate_cisco_text(value, field, max_length=64, allow_spaces=True)
+    if not _SNMP_SECRET_RE.fullmatch(secret):
+        raise ValidationError(
+            f"{field} debe tener entre 8 y 64 caracteres sin espacios ni caracteres de control."
+        )
+    return secret
+
+
+def build_snmpv3_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara SNMPv3 authPriv sin enviar ni conservar claves fuera de la sesion."""
+    group = validate_cisco_text(str(data.get("group", "")), "Grupo SNMPv3", max_length=32, allow_spaces=False)
+    username = validate_cisco_text(
+        str(data.get("username", "")), "Usuario SNMPv3", max_length=32, allow_spaces=False
+    )
+    auth_password = _snmpv3_secret(str(data.get("auth_password", "")), "Clave de autenticacion")
+    privacy_password = _snmpv3_secret(str(data.get("privacy_password", "")), "Clave de privacidad")
+    address = str(validate_ipv4(management_address))
+    engine_check = "show configuration snmp engine-id | display set"
+    config_check = "show configuration snmp | display set"
+    user_prefix = f"set snmp v3 usm local-engine user {username}"
+    return CommandPlan(
+        name="SNMPv3 Junos con autenticacion y privacidad",
+        service="junos_snmpv3",
+        commands=(
+            "set snmp view sarevat-ro oid .1 include",
+            f"set snmp v3 vacm security-to-group security-model usm security-name {username} group {group}",
+            f"set snmp v3 vacm access group {group} default-context-prefix security-model usm "
+            "security-level privacy read-view sarevat-ro",
+            f"{user_prefix} authentication-sha authentication-password {auth_password}",
+            f"{user_prefix} privacy-aes128 privacy-password {privacy_password}",
+        ),
+        prechecks=(engine_check, config_check),
+        postchecks=(config_check,),
+        postcheck_expectations={config_check: (user_prefix, "privacy-aes128")},
+        warnings=(
+            "SNMPv3 requiere un engine ID ya configurado; el precheck bloquea el cambio si falta.",
+            "Las claves se ocultan en vista previa, auditoria, borradores y reportes; "
+            "no se guardan en perfiles.",
+            "El usuario obtiene solo la vista de lectura sarevat-ro y nivel de seguridad authPriv.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "precheck_expectations": {engine_check: ("set snmp engine-id",)},
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH y configuracion SNMPv3 desde una segunda sesion",
                 "commit",
             ),
         },

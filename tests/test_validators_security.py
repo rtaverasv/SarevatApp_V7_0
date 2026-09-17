@@ -99,3 +99,14 @@ def test_snmpv3_credentials_are_redacted() -> None:
     redacted = redact_text(command)
     assert "AuthSecret" not in redacted
     assert "PrivSecret" not in redacted
+
+
+def test_junos_snmpv3_credentials_are_redacted() -> None:
+    command = (
+        "set snmp v3 usm local-engine user monitor authentication-sha "
+        "authentication-password AuthSecret privacy-aes128 privacy-password PrivSecret"
+    )
+    redacted = redact_text(command)
+    assert "AuthSecret" not in redacted
+    assert "PrivSecret" not in redacted
+    assert redacted.count("********") == 2

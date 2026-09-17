@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 16:20:00 -04:00
+
+- Se agrego el candidato Junos SNMPv3 authPriv con vista de solo lectura, grupo VACM, usuario USM, SHA y AES-128; tambien se amplio la redaccion de claves Junos y se habilitaron prechecks semanticos.
+- Motivo: incorporar monitoreo seguro sin persistir claves en perfiles, borradores, auditorias o reportes, bloqueando el flujo cuando falta un engine ID SNMP preexistente.
+- Archivos afectados: `sarevat/security.py`, `sarevat/juniper/transaction.py`, `sarevat/juniper/services.py`, `sarevat/gui.py`, pruebas Junos y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 214 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-16 15:30:00 -04:00
 
 - Se agrego el candidato Junos para uno o dos resolvedores DNS IPv4, con validacion de direcciones unicas, prechecks y verificacion SSH independiente tras commit confirmado.

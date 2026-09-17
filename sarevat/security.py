@@ -29,6 +29,9 @@ _SENSITIVE_LINE_PATTERNS = (
     ),
     re.compile(r"(?i)(\bcommunity\s+)[^\s\"\\]+"),
     re.compile(r"(?i)(\b(?:key-string|pre-shared-key|community-string)\s+)[^\s\"\\]+"),
+    re.compile(
+        r"(?i)(\b(?:authentication|privacy)-(?:password|key)\s+)(?:\"[^\"]*\"|\S+)"
+    ),
     re.compile(r"(?im)^(\s*password\s+)(?:\d+\s+)?\S+"),
 )
 

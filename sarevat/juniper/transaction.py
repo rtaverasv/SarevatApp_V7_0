@@ -54,6 +54,9 @@ def run_prechecks(connection: ConnectionLike, plan: CommandPlan) -> JunosPrechec
 
     outputs: dict[str, str] = {}
     errors: list[str] = []
+    expectations = plan.metadata.get("precheck_expectations", {})
+    if not isinstance(expectations, dict):
+        raise ValueError("Las expectativas de precheck Junos deben ser un diccionario.")
     for command in plan.prechecks:
         try:
             output = str(connection.send_command(command))
@@ -62,6 +65,11 @@ def run_prechecks(connection: ConnectionLike, plan: CommandPlan) -> JunosPrechec
             continue
         outputs[command] = output
         errors.extend(f"{command}: {error}" for error in find_junos_errors(output))
+        expected_tokens = expectations.get(command, ())
+        if expected_tokens and not all(
+            str(token).casefold() in output.casefold() for token in expected_tokens
+        ):
+            errors.append(f"{command}: precheck semantico no confirmado")
     return JunosPrecheckReport(outputs=outputs, errors=tuple(errors))
 
 
