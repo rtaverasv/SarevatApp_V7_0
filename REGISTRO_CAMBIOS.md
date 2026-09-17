@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 15:30:00 -04:00
+
+- Se agrego el candidato Junos para uno o dos resolvedores DNS IPv4, con validacion de direcciones unicas, prechecks y verificacion SSH independiente tras commit confirmado.
+- Motivo: ampliar los servicios de infraestructura sin secretos ni dependencia de una topologia trunk.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, `tests/test_juniper_services.py` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 210 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion adicional al equipo.
+
 ### 2026-09-16 15:00:00 -04:00
 
 - Se agrego el candidato Junos para un colector syslog remoto IPv4 con facility `any` y severidad `notice`, protegido por prechecks, commit confirmado y postcheck SSH independiente.

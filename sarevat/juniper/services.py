@@ -165,6 +165,49 @@ def build_syslog_candidate(
     )
 
 
+def build_dns_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara hasta dos resolvedores DNS Junos sin retirar los existentes."""
+    primary = str(validate_ipv4(str(data.get("primary", ""))))
+    secondary_raw = str(data.get("secondary", "")).strip()
+    servers = (primary,) if not secondary_raw else (primary, str(validate_ipv4(secondary_raw)))
+    if len(set(servers)) != len(servers):
+        raise ValidationError("Los servidores DNS primario y secundario deben ser diferentes.")
+    address = str(validate_ipv4(management_address))
+    config_check = "show configuration system name-server | display set"
+    commands = tuple(f"set system name-server {server}" for server in servers)
+    return CommandPlan(
+        name="Resolvedores DNS Junos",
+        service="junos_dns",
+        commands=commands,
+        prechecks=(config_check,),
+        postchecks=(config_check,),
+        postcheck_expectations={config_check: commands},
+        warnings=(
+            "Este candidato agrega resolvedores DNS; no elimina resolvedores existentes.",
+            "Junos usa como maximo los primeros tres servidores DNS configurados.",
+            "Confirma que los servidores son alcanzables desde la red de gestion.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive",
+                "load set terminal",
+                "show | compare",
+                "commit check",
+                "commit confirmed 5",
+                "verificar SSH y configuracion DNS desde una segunda sesion",
+                "commit",
+            ),
+        },
+    )
+
+
 def build_vlan_access_candidate(
     data: dict[str, Any], facts: DeviceFacts, management_address: str
 ) -> CommandPlan:

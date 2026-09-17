@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from sarevat.juniper.services import (
+    build_dns_candidate,
     build_existing_vlan_access_candidate,
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
@@ -103,6 +104,27 @@ def test_junos_syslog_candidate_adds_notice_collector_and_verifies_it() -> None:
 def test_junos_syslog_candidate_rejects_an_invalid_collector() -> None:
     with pytest.raises(ValidationError):
         build_syslog_candidate({"server": "collector.local"}, _facts(), "192.168.1.50")
+
+
+def test_junos_dns_candidate_adds_one_or_two_distinct_servers() -> None:
+    plan = build_dns_candidate(
+        {"primary": "192.0.2.53", "secondary": "192.0.2.54"}, _facts(), "192.168.1.50"
+    )
+
+    assert plan.commands == (
+        "set system name-server 192.0.2.53",
+        "set system name-server 192.0.2.54",
+    )
+    assert plan.postcheck_expectations["show configuration system name-server | display set"] == plan.commands
+
+
+def test_junos_dns_candidate_rejects_duplicate_or_invalid_servers() -> None:
+    with pytest.raises(ValidationError, match="diferentes"):
+        build_dns_candidate(
+            {"primary": "192.0.2.53", "secondary": "192.0.2.53"}, _facts(), "192.168.1.50"
+        )
+    with pytest.raises(ValidationError):
+        build_dns_candidate({"primary": "dns.local"}, _facts(), "192.168.1.50")
 
 
 def test_junos_vlan_access_candidate_is_limited_to_new_vlan_and_physical_port() -> None:

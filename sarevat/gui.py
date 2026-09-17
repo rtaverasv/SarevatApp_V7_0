@@ -37,6 +37,7 @@ from sarevat.compliance import ComplianceStatus, audit_running_config, export_co
 from sarevat.drafts import DraftStore
 from sarevat.inventory import ConnectionProfile, InventoryStore
 from sarevat.juniper.services import (
+    build_dns_candidate,
     build_existing_vlan_access_candidate,
     build_existing_vlan_trunk_candidate,
     build_management_candidate,
@@ -874,6 +875,11 @@ class SarevatGui(tk.Tk):
                 ).pack(anchor="w", pady=(8, 0))
                 ttk.Button(
                     card,
+                    text="Preparar resolvedores DNS (vista previa)",
+                    command=self._junos_dns_candidate_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
                     text="Preparar VLAN y puerto access (vista previa)",
                     command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
@@ -1227,6 +1233,21 @@ class SarevatGui(tk.Tk):
             notice=(
                 "Se configurara facility any con severidad notice. "
                 "El colector debe ser alcanzable desde la red de gestion."
+            ),
+        )
+
+    def _junos_dns_candidate_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        management_address = str(session.reconnect_params.get("host", "")) if session.reconnect_params else ""
+        self._simple_plan_form(
+            "Resolvedores DNS Junos",
+            (("DNS primario IPv4", "primary"), ("DNS secundario IPv4 (opcional)", "secondary")),
+            lambda data: build_dns_candidate(data, session.facts, management_address),
+            notice=(
+                "Los servidores se agregan sin eliminar los existentes. "
+                "Verifica que sean alcanzables desde la red de gestion."
             ),
         )
 
