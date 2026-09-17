@@ -43,6 +43,7 @@ from sarevat.juniper.services import (
     build_management_candidate,
     build_ntp_candidate,
     build_snmpv3_candidate,
+    build_ssh_hardening_candidate,
     build_syslog_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -902,6 +903,11 @@ class SarevatGui(tk.Tk):
                 ).pack(anchor="w", pady=(8, 0))
                 ttk.Button(
                     card,
+                    text="Preparar endurecimiento SSH (vista previa)",
+                    command=self._junos_ssh_hardening_candidate_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
                     text="Preparar VLAN y puerto access (vista previa)",
                     command=self._junos_vlan_access_candidate_page,
                 ).pack(anchor="w", pady=(8, 0))
@@ -1291,6 +1297,24 @@ class SarevatGui(tk.Tk):
             notice=(
                 "Requiere engine ID SNMP ya configurado; se validara antes de aplicar. "
                 "Las claves solo existen durante esta sesion y se redactan en toda evidencia local."
+            ),
+        )
+
+    def _junos_ssh_hardening_candidate_page(self) -> None:
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        management_address = str(session.reconnect_params.get("host", "")) if session.reconnect_params else ""
+        self._simple_plan_form(
+            "Endurecimiento SSH Junos",
+            (
+                ("Limite de sesiones (1-250)", "connection_limit"),
+                ("Intentos por minuto (1-250)", "rate_limit"),
+            ),
+            lambda data: build_ssh_hardening_candidate(data, session.facts, management_address),
+            notice=(
+                "Solo fija SSHv2 y limites; no modifica puerto ni autenticacion. "
+                "Usa valores que no bloqueen a los operadores autorizados."
             ),
         )
 

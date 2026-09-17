@@ -133,6 +133,50 @@ def build_ntp_candidate(
     )
 
 
+def build_ssh_hardening_candidate(
+    data: dict[str, Any], facts: DeviceFacts, management_address: str
+) -> CommandPlan:
+    """Prepara limites conservadores para SSH sin cambiar puerto ni autenticacion."""
+    try:
+        connection_limit = int(str(data.get("connection_limit", "")).strip())
+        rate_limit = int(str(data.get("rate_limit", "")).strip())
+    except ValueError as exc:
+        raise ValidationError("Los limites SSH deben ser numeros enteros entre 1 y 250.") from exc
+    if not 1 <= connection_limit <= 250 or not 1 <= rate_limit <= 250:
+        raise ValidationError("Los limites SSH deben estar entre 1 y 250.")
+    address = str(validate_ipv4(management_address))
+    config_check = "show configuration system services ssh | display set"
+    commands = (
+        "set system services ssh protocol-version v2",
+        f"set system services ssh connection-limit {connection_limit}",
+        f"set system services ssh rate-limit {rate_limit}",
+    )
+    return CommandPlan(
+        name="Endurecimiento SSH Junos",
+        service="junos_ssh_hardening",
+        commands=commands,
+        prechecks=(config_check, "show system connections | match ssh"),
+        postchecks=(config_check,),
+        postcheck_expectations={config_check: commands},
+        warnings=(
+            "No cambia el puerto SSH ni los metodos de autenticacion.",
+            "Los limites se aplican por protocolo IP; confirma que son adecuados para tus operadores.",
+            "La aplicacion requiere commit confirmed y una segunda sesion SSH antes del commit final.",
+        ),
+        metadata={
+            "platform": "juniper_junos",
+            "preview_only": True,
+            "remote_apply_supported": True,
+            "management_address": address,
+            "management_interface": preferred_management_interface(facts),
+            "manual_workflow": (
+                "configure exclusive", "load set terminal", "show | compare", "commit check",
+                "commit confirmed 5", "verificar segunda sesion SSH", "commit",
+            ),
+        },
+    )
+
+
 def build_syslog_candidate(
     data: dict[str, Any], facts: DeviceFacts, management_address: str
 ) -> CommandPlan:

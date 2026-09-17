@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 17:05:00 -04:00
+
+- Se agrego un candidato Junos de endurecimiento SSH que fija SSHv2 y permite limites conservadores de sesiones e intentos, sin cambiar puerto ni autenticacion.
+- Motivo: ampliar la seguridad de acceso remoto manteniendo el flujo recuperable de commit confirmado y segunda sesion SSH.
+- Archivos afectados: `sarevat/juniper/services.py`, `sarevat/gui.py`, pruebas Junos y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 217 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-16 16:45:00 -04:00
 
 - Se agrego para Junos una referencia local por equipo y una comparacion de cambios, ambas activadas solo por el operador mediante la consulta de lectura `show configuration | display set`; se reforzo la redaccion de hashes y claves de configuracion Junos.

@@ -9,6 +9,7 @@ from sarevat.juniper.services import (
     build_management_candidate,
     build_ntp_candidate,
     build_snmpv3_candidate,
+    build_ssh_hardening_candidate,
     build_syslog_candidate,
     build_vlan_access_candidate,
     preferred_management_interface,
@@ -43,6 +44,21 @@ def test_junos_management_candidate_is_validated_and_preview_only() -> None:
         "set system host-name EX2200-LAB",
         "set interfaces vlan unit 0 family inet address 192.0.2.50/24",
     )
+
+
+def test_junos_ssh_hardening_candidate_is_conservative() -> None:
+    plan = build_ssh_hardening_candidate(
+        {"connection_limit": "10", "rate_limit": "20"}, _facts(), "192.168.1.50"
+    )
+    assert plan.commands == (
+        "set system services ssh protocol-version v2",
+        "set system services ssh connection-limit 10",
+        "set system services ssh rate-limit 20",
+    )
+    with pytest.raises(ValidationError, match="entre 1 y 250"):
+        build_ssh_hardening_candidate(
+            {"connection_limit": "0", "rate_limit": "20"}, _facts(), "192.168.1.50"
+        )
     assert plan.metadata["preview_only"] is True
     assert "commit confirmed 5" in plan.metadata["manual_workflow"]
 
