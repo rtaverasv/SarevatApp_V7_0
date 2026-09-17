@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 17:35:00 -04:00
+
+- Se separaron los formularios Junos de NTP, syslog, DNS, SNMPv3 y endurecimiento SSH desde la ventana principal hacia el modulo `gui_junos_services`; tambien se documento la arquitectura en el roadmap.
+- Motivo: reducir el tamaño y acoplamiento de `gui.py`, conservando una capa de interfaz por plataforma y manteniendo la construccion de planes fuera de Tkinter.
+- Archivos afectados: `sarevat/gui.py`, `sarevat/gui_junos_services.py`, `ROADMAP.md` y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 217 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-16 17:05:00 -04:00
 
 - Se agrego un candidato Junos de endurecimiento SSH que fija SSHv2 y permite limites conservadores de sesiones e intentos, sin cambiar puerto ni autenticacion.

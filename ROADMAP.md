@@ -41,6 +41,16 @@ resultados no certifican compatibilidad con equipos Cisco reales.
 
 ## Capacidades entregadas
 
+## Organización del código
+
+- `sarevat/gui.py` conserva la ventana principal, navegación, sesión y la revisión común de planes.
+- `sarevat/gui_junos_services.py` agrupa los formularios Junos de NTP, syslog, DNS, SNMPv3 y endurecimiento SSH.
+- `sarevat/juniper/` contiene descubrimiento, construcción de candidatos y transacciones Junos; no depende de Tkinter.
+- `sarevat/cisco/` mantiene el descubrimiento, servicios y ejecutor específicos de Cisco.
+- `tests/` replica esta separación con pruebas de GUI, seguridad, servicios y transacciones por plataforma.
+
+La siguiente refactorización podrá extraer las pantallas Junos de VLAN y gestión a módulos equivalentes, sin cambiar la capa de planes ni los flujos de seguridad.
+
 - Base multi-fabricante local: la GUI puede detectar por SSH Cisco IOS/IOS-XE,
   Junos y Huawei VRP. Junos ofrece inventario y prechecks de solo lectura,
   además de candidatos de gestión en vista previa; Huawei y marcas no
