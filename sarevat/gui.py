@@ -290,6 +290,12 @@ def profile_connection_target(profile: ConnectionProfile | None) -> str:
     return profile.host if profile.transport == "ssh" else profile.serial_port or ""
 
 
+def junos_baseline_path(runtime: Path, hostname: str) -> Path:
+    """Devuelve una referencia Junos aislada por equipo, sin usar el nombre sin validar."""
+    normalized = re.sub(r"[^A-Za-z0-9_-]+", "_", hostname.strip())[:60].strip("_")
+    return runtime / "baselines" / f"junos_{normalized or 'equipo_desconocido'}.json"
+
+
 @dataclass(slots=True)
 class DeviceSession:
     """Conexion abierta para una sesion GUI; se cierra al desconectar."""
@@ -863,6 +869,16 @@ class SarevatGui(tk.Tk):
                     card,
                     text="Ver VLANs y puertos descubiertos",
                     command=self._junos_vlan_inventory_page,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
+                    text="Guardar referencia Junos redactada (solo lectura)",
+                    command=self._capture_junos_baseline,
+                ).pack(anchor="w", pady=(8, 0))
+                ttk.Button(
+                    card,
+                    text="Ver cambios desde referencia Junos (solo lectura)",
+                    command=self._show_junos_drift,
                 ).pack(anchor="w", pady=(8, 0))
                 ttk.Button(
                     card,
@@ -2057,6 +2073,78 @@ class SarevatGui(tk.Tk):
             diff.splitlines()[:120],
             "No hay cambios frente a la referencia guardada.",
         )
+
+    def _capture_junos_baseline(self) -> None:
+        """Guarda una referencia local redactada tras una consulta Junos explícita."""
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        if not messagebox.askyesno(
+            "Referencia Junos",
+            "Se ejecutara solo 'show configuration | display set'. "
+            "La copia local se redactara y no contiene una copia recuperable. Continuar?",
+            parent=self,
+        ):
+            return
+        session = self.session
+        command = "show configuration | display set"
+
+        def capture() -> str:
+            output = str(session.connection.send_command(command, read_timeout=60))
+            if not output.strip():
+                raise ValueError("Junos no devolvio configuracion para crear la referencia.")
+            session.audit.event("junos_baseline_capture", command=command, output=redact_text(output))
+            return output
+
+        def done(result: object) -> None:
+            if isinstance(result, Exception):
+                messagebox.showwarning("Referencia Junos", redact_text(str(result)), parent=self)
+                return
+            try:
+                baseline = ConfigurationBaseline.from_config(session.facts.hostname, str(result))
+                BaselineStore(junos_baseline_path(self.runtime, session.facts.hostname)).save(baseline)
+            except (OSError, ValueError) as exc:
+                messagebox.showwarning("Referencia Junos", redact_text(str(exc)), parent=self)
+                return
+            messagebox.showinfo(
+                "Referencia Junos",
+                "Referencia redactada guardada localmente para este equipo. "
+                "No se modifico el switch.",
+                parent=self,
+            )
+
+        self._run_session_worker(capture, done)
+
+    def _show_junos_drift(self) -> None:
+        """Compara una consulta Junos de lectura con su referencia local redactada."""
+        if not self.session or self.session.platform is not NetworkPlatform.JUNIPER_JUNOS:
+            return
+        session = self.session
+        store = BaselineStore(junos_baseline_path(self.runtime, session.facts.hostname))
+        try:
+            baseline = store.load()
+        except ValueError as exc:
+            messagebox.showwarning("Cambios Junos", str(exc), parent=self)
+            return
+        command = "show configuration | display set"
+
+        def capture() -> str:
+            output = str(session.connection.send_command(command, read_timeout=60))
+            if not output.strip():
+                raise ValueError("Junos no devolvio configuracion para comparar.")
+            session.audit.event("junos_baseline_compare", command=command, output=redact_text(output))
+            return output
+
+        def done(result: object) -> None:
+            if isinstance(result, Exception):
+                messagebox.showwarning("Cambios Junos", redact_text(str(result)), parent=self)
+                return
+            self._show_records(
+                f"Cambios Junos desde {baseline.captured_at}",
+                compare_with_baseline(baseline, str(result)).splitlines()[:120],
+                "No hay cambios frente a la referencia guardada.",
+            )
+
+        self._run_session_worker(capture, done)
 
     def _vlsm_page(self) -> None:
         self._page_header(

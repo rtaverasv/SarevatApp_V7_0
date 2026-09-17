@@ -110,3 +110,13 @@ def test_junos_snmpv3_credentials_are_redacted() -> None:
     assert "AuthSecret" not in redacted
     assert "PrivSecret" not in redacted
     assert redacted.count("********") == 2
+
+
+def test_junos_display_set_passwords_and_keys_are_redacted() -> None:
+    text = (
+        'set system root-authentication encrypted-password "$6$HashValue"\n'
+        'set protocols bgp group EDGE authentication-key "BGPSecret"\n'
+    )
+    redacted = redact_text(text)
+    assert "HashValue" not in redacted
+    assert "BGPSecret" not in redacted

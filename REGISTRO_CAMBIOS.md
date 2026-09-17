@@ -15,6 +15,13 @@ Cada entrada debe incluir:
 
 ## Historial
 
+### 2026-09-16 16:45:00 -04:00
+
+- Se agrego para Junos una referencia local por equipo y una comparacion de cambios, ambas activadas solo por el operador mediante la consulta de lectura `show configuration | display set`; se reforzo la redaccion de hashes y claves de configuracion Junos.
+- Motivo: conservar evidencia de configuracion sin modificar el equipo, sin cruzar referencias entre dispositivos y sin persistir secretos visibles.
+- Archivos afectados: `sarevat/security.py`, `sarevat/gui.py`, pruebas de seguridad y GUI, y `REGISTRO_CAMBIOS.md`.
+- Comprobaciones: 216 pruebas, Ruff, Bandit, `pip check` y `git diff --check` aprobados; no se envio configuracion al equipo.
+
 ### 2026-09-16 16:20:00 -04:00
 
 - Se agrego el candidato Junos SNMPv3 authPriv con vista de solo lectura, grupo VACM, usuario USM, SHA y AES-128; tambien se amplio la redaccion de claves Junos y se habilitaron prechecks semanticos.

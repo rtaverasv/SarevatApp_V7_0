@@ -13,6 +13,7 @@ from sarevat.gui import (
     export_vlsm_outputs,
     format_junos_prechecks,
     inventory_overview,
+    junos_baseline_path,
     junos_lab_checkbox_acceptance,
     junos_physical_port_choices,
     network_summary,
@@ -30,6 +31,11 @@ def test_gui_ssh_connection_params_are_validated() -> None:
     params = build_connection_params("ssh", "192.0.2.10", "", "admin", "password", "enable")
     assert params["host"] == "192.0.2.10"
     assert params["password"] == "password"
+
+
+def test_junos_baseline_path_is_isolated_and_safe(tmp_path) -> None:
+    path = junos_baseline_path(tmp_path, "Admin / LAB")
+    assert path == tmp_path / "baselines" / "junos_Admin_LAB.json"
 
 
 def test_gui_serial_connection_can_omit_or_use_temporary_credentials() -> None:

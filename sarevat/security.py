@@ -32,6 +32,10 @@ _SENSITIVE_LINE_PATTERNS = (
     re.compile(
         r"(?i)(\b(?:authentication|privacy)-(?:password|key)\s+)(?:\"[^\"]*\"|\S+)"
     ),
+    re.compile(
+        r"(?i)(\b(?:authentication-key|encrypted-password|plain-text-password)\s+)"
+        r"(?:\"[^\"]*\"|\S+)"
+    ),
     re.compile(r"(?im)^(\s*password\s+)(?:\d+\s+)?\S+"),
 )
 
